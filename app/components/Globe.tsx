@@ -183,10 +183,11 @@ export default function Globe(props: GlobeProps) {
     let satPoints = new THREE.Points(
       satGeo,
       new THREE.PointsMaterial({
-        size: 3.4,
+        size: 4.8,
         map: sprite,
         vertexColors: true,
         transparent: true,
+        opacity: 0.95,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
         sizeAttenuation: true,
