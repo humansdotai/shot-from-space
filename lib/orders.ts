@@ -10,6 +10,9 @@ export interface OrderInput {
   location: LatLng;
   label: string; // address or "pinned coordinates"
   target?: string; // optional free-text ("my house")
+  sensor?: "optical" | "sar"; // capture modality
+  resolution?: string; // requested GSD label, e.g. "0.30 m"
+  attemptAt?: string; // ISO earliest-attempt timestamp for the tasking window
 }
 
 export interface Order extends OrderInput {
@@ -28,6 +31,9 @@ export function encodeMetadata(o: OrderInput): Record<string, string> {
     lng: o.location.lng.toFixed(6),
     label: o.label.slice(0, 480),
     target: (o.target ?? "").slice(0, 300),
+    sensor: o.sensor ?? "",
+    resolution: o.resolution ?? "",
+    attemptAt: o.attemptAt ?? "",
   };
 }
 
@@ -46,6 +52,9 @@ export function decodeMetadata(
     location: { lat: parseFloat(md.lat), lng: parseFloat(md.lng) },
     label: md.label ?? "",
     target: md.target || undefined,
+    sensor: md.sensor === "sar" || md.sensor === "optical" ? md.sensor : undefined,
+    resolution: md.resolution || undefined,
+    attemptAt: md.attemptAt || undefined,
     paid,
     amount,
     currency,

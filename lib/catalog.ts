@@ -191,3 +191,43 @@ export function tier(id: string): Tier {
   if (!t) throw new Error(`unknown tier: ${id}`);
   return t;
 }
+
+// Ground-sample-distance stops for the resolution slider, mapped to the SkyFi
+// resolution enum used when placing a live tasking order.
+export interface ResolutionStop {
+  m: number;
+  label: string;
+  skyfi: string;
+}
+
+export const RESOLUTIONS: ResolutionStop[] = [
+  { m: 0.25, label: "0.25 m", skyfi: "SUPER HIGH" },
+  { m: 0.3, label: "0.30 m", skyfi: "VERY HIGH" },
+  { m: 0.5, label: "0.50 m", skyfi: "HIGH" },
+  { m: 1, label: "1 m", skyfi: "HIGH" },
+  { m: 3, label: "3 m", skyfi: "MEDIUM" },
+  { m: 10, label: "10 m", skyfi: "LOW" },
+];
+
+/** Nearest slider index for a tier's resolution label like "0.3 m" or "0.25–0.3 m". */
+export function resolutionIndexFor(label: string): number {
+  const first = parseFloat(label.replace(",", "."));
+  if (Number.isNaN(first)) return 1;
+  let best = 0;
+  let bestD = Infinity;
+  RESOLUTIONS.forEach((r, i) => {
+    const d = Math.abs(r.m - first);
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  });
+  return best;
+}
+
+/** Map a GSD label ("0.30 m") to the SkyFi resolution enum for a sensor. */
+export function resolutionToSkyfi(label: string | undefined, sensor: Sensor): string {
+  if (sensor === "sar") return "HIGH";
+  const stop = RESOLUTIONS.find((r) => r.label === label);
+  return stop?.skyfi ?? "VERY HIGH";
+}

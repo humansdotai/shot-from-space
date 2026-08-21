@@ -44,12 +44,16 @@ export default function OrderClient({ id }: { id: string }) {
     const tierId = TIERS.some((t) => t.id === sp.get("tier"))
       ? (sp.get("tier") as string)
       : "priority";
+    const sensorParam = sp.get("sensor");
     setOrder({
       id: "demo",
       tierId,
       location: { lat, lng },
       label: sp.get("label") || "Demo target",
       target: sp.get("target") || "this location",
+      sensor: sensorParam === "sar" || sensorParam === "optical" ? sensorParam : undefined,
+      resolution: sp.get("res") || undefined,
+      attemptAt: sp.get("attemptAt") || undefined,
       paid: true,
       amount: 0,
       currency: "USD",
@@ -116,14 +120,16 @@ export default function OrderClient({ id }: { id: string }) {
   }, [elapsed]);
 
   const deliveredUrl = order ? esriImageUrl(order.location, 170, 1024) : "";
-  const highlight = partner
-    ? partner.sensor === "sar"
-      ? partner.id === "umbra"
+  // capture spec honours the customer's chosen parameters, falling back to tier
+  const effSensor = order?.sensor ?? partner?.sensor ?? "optical";
+  const effResolution = order?.resolution ?? tier?.resolution ?? "0.3 m";
+  const highlight =
+    effSensor === "sar"
+      ? partner?.id === "umbra"
         ? "UMBRA"
         : "CAPELLA"
-      : "SKYSAT"
-    : null;
-  const globeGroup = partner?.sensor === "sar" ? "sar" : "planet";
+      : "SKYSAT";
+  const globeGroup = effSensor === "sar" ? "sar" : "planet";
 
   if (loading)
     return <Centered>◴ Retrieving order telemetry…</Centered>;
@@ -198,14 +204,25 @@ export default function OrderClient({ id }: { id: string }) {
             {fmtCoord(order.location)}
           </div>
           <div className="row wrap-gap" style={{ gap: 6, marginTop: 10 }}>
-            <span className={`chip ${partner?.sensor === "sar" ? "sar" : ""}`}>
-              {tier?.resolution} {tier?.sensor}
+            <span className={`chip ${effSensor === "sar" ? "sar" : ""}`}>
+              {effResolution} {effSensor}
             </span>
             <span className="chip">{partner?.name}</span>
             <span className="chip">
               {isDemo ? "no charge" : `$${(order.amount / 100).toFixed(0)} paid`}
             </span>
           </div>
+          {order.attemptAt && (
+            <div className="mono faint" style={{ fontSize: 10.5, marginTop: 8 }}>
+              ⧗ attempt window from{" "}
+              {new Date(order.attemptAt).toLocaleString(undefined, {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </div>
+          )}
         </div>
 
         <hr className="hair" />
@@ -251,7 +268,7 @@ export default function OrderClient({ id }: { id: string }) {
         <div className="op-deliver panel">
           <div className="row spread" style={{ padding: "12px 14px" }}>
             <span className="label">Delivered capture</span>
-            <span className="chip on">◉ {partner?.resolution}</span>
+            <span className="chip on">◉ {effResolution} {effSensor}</span>
           </div>
           <div className="op-image">
             {/* eslint-disable-next-line @next/next/no-img-element */}

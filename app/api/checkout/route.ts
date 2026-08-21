@@ -47,7 +47,9 @@ export async function POST(req: NextRequest) {
             unit_amount: t.price * 100,
             product_data: {
               name: `${t.name} — satellite tasking`,
-              description: `${t.resolution} ${t.sensor.toUpperCase()} capture · ${body.label}`,
+              description: `${body.resolution ?? t.resolution} ${(
+                body.sensor ?? t.sensor
+              ).toUpperCase()} capture · ${body.label}`,
             },
           },
         },

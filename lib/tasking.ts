@@ -9,7 +9,7 @@
 // hit. Pure simulation is only a last resort if both are unreachable.
 
 import type { Order } from "./orders";
-import { tier, partner } from "./catalog";
+import { tier, partner, resolutionToSkyfi } from "./catalog";
 import { bboxAround } from "./geo";
 
 export interface TaskingResult {
@@ -47,11 +47,14 @@ async function taskSkyFi(order: Order): Promise<TaskingResult | null> {
   const key = process.env.SKYFI_API_KEY;
   if (!key) return null;
   const t = tier(order.tierId);
-  const now = new Date();
-  const windowStart = now.toISOString();
-  const windowEnd = new Date(now.getTime() + 72 * 3600_000).toISOString();
-  const resolution = t.sensor === "sar" ? "HIGH" : "VERY HIGH";
-  const productType = t.sensor === "sar" ? "SAR" : "DAY";
+  const sensor = order.sensor ?? t.sensor;
+  // honour the customer's chosen attempt time (or now), 72h collection window
+  const startMs = order.attemptAt ? Date.parse(order.attemptAt) : NaN;
+  const start = Number.isFinite(startMs) ? new Date(startMs) : new Date();
+  const windowStart = start.toISOString();
+  const windowEnd = new Date(start.getTime() + 72 * 3600_000).toISOString();
+  const resolution = resolutionToSkyfi(order.resolution, sensor);
+  const productType = sensor === "sar" ? "SAR" : "DAY";
 
   const res = await fetch("https://app.skyfi.com/platform-api/order-tasking", {
     method: "POST",

@@ -1,9 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { TIERS, partner, PARTNERS } from "@/lib/catalog";
+import {
+  TIERS,
+  partner,
+  PARTNERS,
+  RESOLUTIONS,
+  resolutionIndexFor,
+} from "@/lib/catalog";
 import { fmtCoord, type LatLng } from "@/lib/geo";
 import LocatorMapClient from "./LocatorMapClient";
+
+// local datetime-local string for "now", rounded to the minute
+function nowLocalInput(): string {
+  const d = new Date();
+  d.setSeconds(0, 0);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
+}
 
 interface GeoResult {
   label: string;
@@ -22,11 +36,27 @@ export default function TaskConsole() {
   const [label, setLabel] = useState("Statue of Liberty, New York");
   const [target, setTarget] = useState("my house");
   const [tierId, setTierId] = useState("priority");
+  const [sensor, setSensor] = useState<"optical" | "sar">("optical");
+  const [resIdx, setResIdx] = useState(1); // 0.30 m
+  const [attemptAt, setAttemptAt] = useState<string>(nowLocalInput());
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const searchTimer = useRef<any>(null);
 
   const selectedTier = TIERS.find((t) => t.id === tierId)!;
+
+  // selecting a tier seeds the capture parameters with its spec
+  useEffect(() => {
+    setSensor(selectedTier.sensor === "sar" ? "sar" : "optical");
+    setResIdx(resolutionIndexFor(selectedTier.resolution));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tierId]);
+
+  // SAR floor: radar isn't sub-0.25 m here; keep the slider sensible
+  useEffect(() => {
+    if (sensor === "sar" && RESOLUTIONS[resIdx].m < 0.25) setResIdx(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sensor]);
 
   // debounced geocode
   useEffect(() => {
@@ -75,7 +105,15 @@ export default function TaskConsole() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tierId, location: loc, label, target }),
+        body: JSON.stringify({
+          tierId,
+          location: loc,
+          label,
+          target,
+          sensor,
+          resolution: RESOLUTIONS[resIdx].label,
+          attemptAt: new Date(attemptAt).toISOString(),
+        }),
       });
       const d = await res.json();
       if (!res.ok || !d.url) throw new Error(d.error || "Checkout failed.");
@@ -175,6 +213,74 @@ export default function TaskConsole() {
               value={target}
               onChange={(e) => setTarget(e.target.value)}
             />
+
+            {/* ── capture parameters ── */}
+            <hr className="hair" style={{ margin: "16px 0 14px" }} />
+            <span className="label">Capture parameters</span>
+
+            {/* sensor toggle */}
+            <div className="param">
+              <span className="param-l">Sensor</span>
+              <div className="seg">
+                <button
+                  className={`seg-btn ${sensor === "optical" ? "on" : ""}`}
+                  onClick={() => setSensor("optical")}
+                >
+                  ◉ Optical
+                </button>
+                <button
+                  className={`seg-btn ${sensor === "sar" ? "on sar" : ""}`}
+                  onClick={() => setSensor("sar")}
+                >
+                  ◈ SAR · radar
+                </button>
+              </div>
+            </div>
+            <div className="param-note faint mono">
+              {sensor === "sar"
+                ? "Synthetic-aperture radar — sees through cloud, smoke and darkness."
+                : "Daylight optical — true-colour imagery, cloud-screened."}
+            </div>
+
+            {/* resolution slider */}
+            <div className="param" style={{ marginTop: 12 }}>
+              <span className="param-l">Resolution</span>
+              <span className="param-v mono">
+                {RESOLUTIONS[resIdx].label}
+                <span className="faint"> / px</span>
+              </span>
+            </div>
+            <input
+              className="slider"
+              type="range"
+              min={0}
+              max={RESOLUTIONS.length - 1}
+              step={1}
+              value={resIdx}
+              onChange={(e) => setResIdx(parseInt(e.target.value, 10))}
+              aria-label="resolution"
+            />
+            <div className="slider-ticks mono faint">
+              <span>sharpest</span>
+              <span>widest</span>
+            </div>
+
+            {/* attempt date/time */}
+            <div className="param" style={{ marginTop: 12 }}>
+              <span className="param-l">Attempt from</span>
+              <span className="faint mono" style={{ fontSize: 10 }}>
+                72 h collection window
+              </span>
+            </div>
+            <input
+              className="field mono"
+              type="datetime-local"
+              style={{ marginTop: 8, fontSize: 12, colorScheme: "dark" }}
+              value={attemptAt}
+              min={nowLocalInput()}
+              onChange={(e) => setAttemptAt(e.target.value)}
+              aria-label="earliest attempt"
+            />
           </div>
         </div>
 
@@ -219,9 +325,25 @@ export default function TaskConsole() {
 
           <hr className="hair" />
           <div style={{ padding: 18 }}>
+            <div className="row wrap-gap" style={{ gap: 6, marginBottom: 10 }}>
+              <span className={`chip ${sensor === "sar" ? "sar" : ""}`}>
+                {RESOLUTIONS[resIdx].label} {sensor}
+              </span>
+              <span className="chip">{partner(selectedTier.partnerId).name}</span>
+              <span className="chip">
+                {new Date(attemptAt).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                })}{" "}
+                {new Date(attemptAt).toLocaleTimeString(undefined, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
             <div className="row spread" style={{ marginBottom: 4 }}>
               <span className="muted mono" style={{ fontSize: 12 }}>
-                {selectedTier.name} · {partner(selectedTier.partnerId).name}
+                {selectedTier.name}
               </span>
               <span className="mono" style={{ fontSize: 20, fontWeight: 700 }}>
                 ${selectedTier.price}.00
@@ -235,9 +357,11 @@ export default function TaskConsole() {
               className="demo-link mono"
               href={`/order/demo?lat=${loc.lat.toFixed(5)}&lng=${loc.lng.toFixed(
                 5
-              )}&tier=${tierId}&label=${encodeURIComponent(
-                label
-              )}&target=${encodeURIComponent(target)}`}
+              )}&tier=${tierId}&sensor=${sensor}&res=${encodeURIComponent(
+                RESOLUTIONS[resIdx].label
+              )}&label=${encodeURIComponent(label)}&target=${encodeURIComponent(
+                target
+              )}`}
             >
               ▷ Preview a demo pass — no charge
             </a>
@@ -295,4 +419,21 @@ const css = `
 .coord-readout{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; padding:9px 12px;
   border:1px solid var(--line-2); border-radius:10px; background:var(--void); }
 .coord-readout > span:first-child{ font-size:13px; color:var(--green); letter-spacing:.02em; }
+.param{ display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
+.param-l{ font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+.param-v{ font-size:13px; color:var(--ink); }
+.param-note{ font-size:10.5px; margin-top:6px; line-height:1.4; }
+.seg{ display:flex; gap:6px; }
+.seg-btn{ font-family:var(--mono); font-size:11px; letter-spacing:.04em; color:var(--muted); background:var(--void);
+  border:1px solid var(--line-2); border-radius:8px; padding:7px 11px; cursor:pointer; transition:all .12s; }
+.seg-btn:hover{ color:var(--ink); }
+.seg-btn.on{ color:var(--ink); border-color:var(--cobalt); background:var(--cobalt-soft); }
+.seg-btn.on.sar{ border-color:rgba(255,176,32,.5); background:rgba(255,176,32,.1); color:var(--amber); }
+.slider{ -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:3px; margin-top:10px;
+  background:linear-gradient(90deg, var(--cobalt), var(--green)); outline:none; cursor:pointer; }
+.slider::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:50%;
+  background:#fff; border:2px solid var(--cobalt); box-shadow:0 0 8px rgba(58,107,255,.6); cursor:pointer; }
+.slider::-moz-range-thumb{ width:15px; height:15px; border-radius:50%; background:#fff; border:2px solid var(--cobalt); cursor:pointer; }
+.slider-ticks{ display:flex; justify-content:space-between; font-size:9px; letter-spacing:.1em; text-transform:uppercase; margin-top:6px; }
+input[type=datetime-local].field{ color-scheme:dark; }
 `;
