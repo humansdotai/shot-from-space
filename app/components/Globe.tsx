@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import ThreeGlobe from "three-globe";
 import * as satellite from "satellite.js";
-import type { Tle } from "@/lib/satellites";
+import { FALLBACK_TLES, type Tle } from "@/lib/satellites";
 
 const EARTH_RADIUS_KM = 6371;
 const GLOBE_R = 100; // three-globe default radius
@@ -291,35 +291,41 @@ export default function Globe(props: GlobeProps) {
       };
     }
 
-    // load TLEs
+    function setRecs(tles: Tle[], source: string) {
+      if (disposed) return;
+      recs = tles
+        .map((t) => {
+          try {
+            const rec = satellite.twoline2satrec(t.line1, t.line2);
+            return { name: t.name, rec, type: classify(t.name) } as SatRec;
+          } catch {
+            return null;
+          }
+        })
+        .filter((x): x is SatRec => !!x);
+
+      const n = recs.length;
+      const pos = new Float32Array(n * 3);
+      const col = new Float32Array(n * 3);
+      recs.forEach((r, i) => {
+        const c = COLOR[r.type];
+        col[i * 3] = c.r;
+        col[i * 3 + 1] = c.g;
+        col[i * 3 + 2] = c.b;
+      });
+      satGeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      satGeo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+      buildHighlight();
+      cbRef.current.onStats?.({ count: n, source });
+    }
+
+    // Seed instantly with the curated set so the globe is never empty, then
+    // upgrade to the live Celestrak feed the moment it arrives.
+    setRecs(FALLBACK_TLES, "loading");
     fetch(`/api/satellites?group=${encodeURIComponent(group)}&limit=${limit}`)
       .then((r) => r.json())
       .then((data: { tles: Tle[]; source: string }) => {
-        if (disposed) return;
-        recs = data.tles
-          .map((t) => {
-            try {
-              const rec = satellite.twoline2satrec(t.line1, t.line2);
-              return { name: t.name, rec, type: classify(t.name) } as SatRec;
-            } catch {
-              return null;
-            }
-          })
-          .filter((x): x is SatRec => !!x);
-
-        const n = recs.length;
-        const pos = new Float32Array(n * 3);
-        const col = new Float32Array(n * 3);
-        recs.forEach((r, i) => {
-          const c = COLOR[r.type];
-          col[i * 3] = c.r;
-          col[i * 3 + 1] = c.g;
-          col[i * 3 + 2] = c.b;
-        });
-        satGeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-        satGeo.setAttribute("color", new THREE.BufferAttribute(col, 3));
-        buildHighlight();
-        cbRef.current.onStats?.({ count: n, source: data.source });
+        if (data?.tles?.length) setRecs(data.tles, data.source);
       })
       .catch(() => {});
 
