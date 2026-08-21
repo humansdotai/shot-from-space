@@ -19,6 +19,21 @@ function nowLocalInput(): string {
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
 }
 
+// epoch ms -> a datetime-local input string in the viewer's timezone
+function msToLocalInput(ms: number): string {
+  const off = new Date().getTimezoneOffset();
+  return new Date(ms - off * 60000).toISOString().slice(0, 16);
+}
+
+interface PassWindow {
+  aos: number;
+  peak: number;
+  peakElevation: number;
+  satName: string;
+  sunElevation: number;
+  lit: boolean;
+}
+
 interface GeoResult {
   label: string;
   lat: number;
@@ -44,6 +59,11 @@ export default function TaskConsole() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const searchTimer = useRef<any>(null);
+  const [windows, setWindows] = useState<PassWindow[]>([]);
+  const [winLoading, setWinLoading] = useState(false);
+  const [tracked, setTracked] = useState(0);
+  const [pickedPeak, setPickedPeak] = useState<number | null>(null);
+  const winTimer = useRef<any>(null);
 
   const selectedTier = TIERS.find((t) => t.id === tierId)!;
 
@@ -52,6 +72,35 @@ export default function TaskConsole() {
     setAttemptAt(now);
     setMinAttempt(now);
   }, []);
+
+  // fetch the REAL next collection windows (SGP4 pass prediction) for this
+  // target + sensor, debounced so map dragging doesn't spam the endpoint
+  useEffect(() => {
+    if (winTimer.current) clearTimeout(winTimer.current);
+    setWinLoading(true);
+    winTimer.current = setTimeout(async () => {
+      try {
+        const r = await fetch(
+          `/api/passes?lat=${loc.lat.toFixed(4)}&lng=${loc.lng.toFixed(
+            4
+          )}&sensor=${sensor}&now=${Date.now()}`
+        );
+        const d = await r.json();
+        setWindows(d.windows ?? []);
+        setTracked(d.tracked ?? 0);
+      } catch {
+        setWindows([]);
+      } finally {
+        setWinLoading(false);
+      }
+    }, 600);
+    return () => clearTimeout(winTimer.current);
+  }, [loc.lat, loc.lng, sensor]);
+
+  function selectWindow(w: PassWindow) {
+    setAttemptAt(msToLocalInput(w.peak));
+    setPickedPeak(w.peak);
+  }
 
   // selecting a tier seeds the capture parameters with its spec
   useEffect(() => {
@@ -275,20 +324,70 @@ export default function TaskConsole() {
 
             {/* attempt date/time */}
             <div className="param" style={{ marginTop: 12 }}>
-              <span className="param-l">Attempt from</span>
+              <span className="param-l">Next collection windows</span>
               <span className="faint mono" style={{ fontSize: 10 }}>
-                72 h collection window
+                {winLoading
+                  ? "computing…"
+                  : windows.length
+                  ? `${windows.length} passes · ${tracked} sats`
+                  : "no passes"}
               </span>
             </div>
-            <input
-              className="field mono"
-              type="datetime-local"
-              style={{ marginTop: 8, fontSize: 12, colorScheme: "dark" }}
-              value={attemptAt}
-              min={minAttempt}
-              onChange={(e) => setAttemptAt(e.target.value)}
-              aria-label="earliest attempt"
-            />
+
+            <div className="windows">
+              {winLoading && windows.length === 0 && (
+                <div className="win-empty faint mono">
+                  ◴ propagating orbits over target…
+                </div>
+              )}
+              {!winLoading && windows.length === 0 && (
+                <div className="win-empty faint mono">
+                  No {sensor === "sar" ? "radar" : "daylight optical"} passes in
+                  48 h — pick a custom time below.
+                </div>
+              )}
+              {windows.map((w) => {
+                const on = pickedPeak === w.peak;
+                const q =
+                  w.peakElevation >= 60 ? "high" : w.peakElevation >= 40 ? "mid" : "low";
+                return (
+                  <button
+                    key={w.peak}
+                    className={`win ${on ? "on" : ""}`}
+                    onClick={() => selectWindow(w)}
+                  >
+                    <span className="win-when mono">
+                      {new Date(w.peak).toLocaleString(undefined, {
+                        weekday: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    <span className="win-sat mono faint">{w.satName}</span>
+                    <span className={`win-el mono q-${q}`}>{w.peakElevation}°</span>
+                    <span className="win-lit" title={w.lit ? "daylight" : "night"}>
+                      {w.lit ? "☀" : "☾"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <details className="win-custom">
+              <summary className="mono faint">⧗ or set a custom time</summary>
+              <input
+                className="field mono"
+                type="datetime-local"
+                style={{ marginTop: 8, fontSize: 12, colorScheme: "dark" }}
+                value={attemptAt}
+                min={minAttempt}
+                onChange={(e) => {
+                  setAttemptAt(e.target.value);
+                  setPickedPeak(null);
+                }}
+                aria-label="earliest attempt"
+              />
+            </details>
           </div>
         </div>
 
@@ -369,6 +468,8 @@ export default function TaskConsole() {
                 5
               )}&tier=${tierId}&sensor=${sensor}&res=${encodeURIComponent(
                 RESOLUTIONS[resIdx].label
+              )}&attemptAt=${encodeURIComponent(
+                attemptAt ? new Date(attemptAt).toISOString() : ""
               )}&label=${encodeURIComponent(label)}&target=${encodeURIComponent(
                 target
               )}`}
@@ -446,4 +547,22 @@ const css = `
 .slider::-moz-range-thumb{ width:15px; height:15px; border-radius:50%; background:#fff; border:2px solid var(--cobalt); cursor:pointer; }
 .slider-ticks{ display:flex; justify-content:space-between; font-size:9px; letter-spacing:.1em; text-transform:uppercase; margin-top:6px; }
 input[type=datetime-local].field{ color-scheme:dark; }
+.windows{ margin-top:10px; display:flex; flex-direction:column; gap:6px; max-height:236px; overflow-y:auto; padding-right:2px; }
+.win-empty{ font-size:11px; padding:14px 4px; text-align:center; line-height:1.4; }
+.win{ display:grid; grid-template-columns: auto 1fr auto auto; align-items:center; gap:10px; width:100%; text-align:left;
+  background:var(--void); border:1px solid var(--line-2); border-radius:9px; padding:9px 11px; cursor:pointer; transition:all .12s; }
+.win:hover{ border-color:var(--muted); }
+.win.on{ border-color:var(--cobalt); background:var(--cobalt-soft); }
+.win.on::before{ content:"✓"; color:var(--cobalt); font-size:11px; margin-right:-4px; }
+.win-when{ font-size:12px; color:var(--ink); white-space:nowrap; }
+.win-sat{ font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.win-el{ font-size:12px; font-weight:700; letter-spacing:-.01em; }
+.win-el.q-high{ color:var(--green); }
+.win-el.q-mid{ color:var(--cobalt); }
+.win-el.q-low{ color:var(--muted); }
+.win-lit{ font-size:12px; opacity:.85; }
+.win-custom{ margin-top:10px; }
+.win-custom summary{ font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; list-style:none; }
+.win-custom summary::-webkit-details-marker{ display:none; }
+.win-custom summary:hover{ color:var(--ink); }
 `;
