@@ -38,12 +38,20 @@ export default function TaskConsole() {
   const [tierId, setTierId] = useState("priority");
   const [sensor, setSensor] = useState<"optical" | "sar">("optical");
   const [resIdx, setResIdx] = useState(1); // 0.30 m
-  const [attemptAt, setAttemptAt] = useState<string>(nowLocalInput());
+  // time-dependent: set on the client only, to avoid SSR/hydration mismatch
+  const [attemptAt, setAttemptAt] = useState<string>("");
+  const [minAttempt, setMinAttempt] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const searchTimer = useRef<any>(null);
 
   const selectedTier = TIERS.find((t) => t.id === tierId)!;
+
+  useEffect(() => {
+    const now = nowLocalInput();
+    setAttemptAt(now);
+    setMinAttempt(now);
+  }, []);
 
   // selecting a tier seeds the capture parameters with its spec
   useEffect(() => {
@@ -112,7 +120,7 @@ export default function TaskConsole() {
           target,
           sensor,
           resolution: RESOLUTIONS[resIdx].label,
-          attemptAt: new Date(attemptAt).toISOString(),
+          attemptAt: new Date(attemptAt || Date.now()).toISOString(),
         }),
       });
       const d = await res.json();
@@ -277,7 +285,7 @@ export default function TaskConsole() {
               type="datetime-local"
               style={{ marginTop: 8, fontSize: 12, colorScheme: "dark" }}
               value={attemptAt}
-              min={nowLocalInput()}
+              min={minAttempt}
               onChange={(e) => setAttemptAt(e.target.value)}
               aria-label="earliest attempt"
             />
@@ -330,16 +338,18 @@ export default function TaskConsole() {
                 {RESOLUTIONS[resIdx].label} {sensor}
               </span>
               <span className="chip">{partner(selectedTier.partnerId).name}</span>
-              <span className="chip">
-                {new Date(attemptAt).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                })}{" "}
-                {new Date(attemptAt).toLocaleTimeString(undefined, {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
+              {attemptAt && (
+                <span className="chip">
+                  {new Date(attemptAt).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })}{" "}
+                  {new Date(attemptAt).toLocaleTimeString(undefined, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              )}
             </div>
             <div className="row spread" style={{ marginBottom: 4 }}>
               <span className="muted mono" style={{ fontSize: 12 }}>
