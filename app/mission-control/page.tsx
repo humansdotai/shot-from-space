@@ -102,7 +102,7 @@ export default function MissionControl() {
 
       <div className="mc-hint mono faint">drag to orbit · scroll to zoom</div>
 
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
     </div>
   );
 }

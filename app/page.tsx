@@ -195,7 +195,9 @@ const STEPS = [
 
 function PageStyles() {
   return (
-    <style>{`
+    <style
+      dangerouslySetInnerHTML={{
+        __html: `
       .hero{ padding: 48px 0 20px; }
       .hero-grid{ display:grid; grid-template-columns: 1.15fr 1fr; gap: 40px; align-items:center; }
       @media (max-width: 960px){ .hero-grid{ grid-template-columns:1fr; } }
@@ -225,6 +227,8 @@ function PageStyles() {
       .manifesto{ padding: clamp(28px, 5vw, 56px); background:
         radial-gradient(700px 300px at 85% -20%, rgba(58,107,255,.16), transparent 60%), linear-gradient(180deg, var(--panel), var(--deck)); }
       .footer{ padding: 30px 24px 60px; border-top:1px solid var(--line); margin-top:20px; }
-    `}</style>
+    `,
+      }}
+    />
   );
 }

@@ -382,7 +382,7 @@ export default function TaskConsole() {
         </div>
       </div>
 
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
     </div>
   );
 }

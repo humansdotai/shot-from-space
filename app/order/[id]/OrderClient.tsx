@@ -290,7 +290,7 @@ export default function OrderClient({ id }: { id: string }) {
         </div>
       )}
 
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
     </div>
   );
 }

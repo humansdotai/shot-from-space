@@ -114,7 +114,7 @@ export default function LocatorMap({ value, onChange, height = 300 }: Props) {
       </div>
       <div className="locator-hint mono">drag map · crosshair = target</div>
 
-      <style>{css}</style>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
     </div>
   );
 }
