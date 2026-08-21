@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { TIERS, partner } from "@/lib/catalog";
-import { esriImageUrl, fmtCoord, bboxAround, type LatLng } from "@/lib/geo";
+import { useEffect, useRef, useState } from "react";
+import { TIERS, partner, PARTNERS } from "@/lib/catalog";
+import { fmtCoord, type LatLng } from "@/lib/geo";
+import LocatorMapClient from "./LocatorMapClient";
 
 interface GeoResult {
   label: string;
@@ -20,16 +21,11 @@ export default function TaskConsole() {
   const [loc, setLoc] = useState<LatLng>(DEFAULT);
   const [label, setLabel] = useState("Statue of Liberty, New York");
   const [target, setTarget] = useState("my house");
-  const [span, setSpan] = useState(240); // meters shown in preview
   const [tierId, setTierId] = useState("priority");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const searchTimer = useRef<any>(null);
 
-  const previewUrl = useMemo(
-    () => esriImageUrl(loc, span, 720),
-    [loc.lat, loc.lng, span]
-  );
   const selectedTier = TIERS.find((t) => t.id === tierId)!;
 
   // debounced geocode
@@ -71,17 +67,6 @@ export default function TaskConsole() {
     );
   }
 
-  // click on preview refines the pin within the current bbox
-  function refine(e: React.MouseEvent<HTMLDivElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const fx = (e.clientX - rect.left) / rect.width; // 0..1 left→right
-    const fy = (e.clientY - rect.top) / rect.height; // 0..1 top→bottom
-    const b = bboxAround(loc, span);
-    const lng = b.minLng + fx * (b.maxLng - b.minLng);
-    const lat = b.maxLat - fy * (b.maxLat - b.minLat);
-    setLoc({ lat, lng });
-    setLabel("Pinned coordinates");
-  }
 
   async function checkout() {
     setBusy(true);
@@ -172,23 +157,15 @@ export default function TaskConsole() {
               </div>
             </div>
 
-            {/* satellite preview — click to refine */}
-            <div className="preview" onClick={refine} title="Click to refine the pin">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previewUrl} alt="Overhead satellite preview of target" />
-              <div className="crosshair">
-                <span className="ch-v" />
-                <span className="ch-h" />
-                <span className="ch-ring" />
-              </div>
-              <div className="preview-foot mono">
-                <span>{fmtCoord(loc)}</span>
-                <span className="faint">ESRI · WORLD IMAGERY</span>
-              </div>
-              <div className="zoombar">
-                <button onClick={(e) => { e.stopPropagation(); setSpan((s) => Math.max(90, s - 90)); }}>+</button>
-                <button onClick={(e) => { e.stopPropagation(); setSpan((s) => Math.min(1200, s + 120)); }}>−</button>
-              </div>
+            {/* interactive satellite locator — drag map, crosshair = target */}
+            <LocatorMapClient value={loc} onChange={setLoc} height={300} />
+
+            {/* live coordinate readout */}
+            <div className="coord-readout">
+              <span className="mono">{fmtCoord(loc)}</span>
+              <span className="faint mono" style={{ fontSize: 10 }}>
+                ESRI · WORLD IMAGERY
+              </span>
             </div>
 
             <input
@@ -206,7 +183,7 @@ export default function TaskConsole() {
           <div className="row spread" style={{ padding: "16px 18px 12px" }}>
             <span className="label">02 · Choose your capture</span>
             <span className="faint mono" style={{ fontSize: 10 }}>
-              8 constellations online
+              {PARTNERS.length} constellations online
             </span>
           </div>
           <hr className="hair" />
@@ -315,4 +292,7 @@ const css = `
 .err{ margin-top:10px; color:var(--red); font-size:11px; text-align:center; }
 .demo-link{ display:block; text-align:center; margin-top:12px; font-size:11px; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; transition:color .15s; }
 .demo-link:hover{ color:var(--cobalt); }
+.coord-readout{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; padding:9px 12px;
+  border:1px solid var(--line-2); border-radius:10px; background:var(--void); }
+.coord-readout > span:first-child{ font-size:13px; color:var(--green); letter-spacing:.02em; }
 `;

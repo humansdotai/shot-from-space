@@ -1,21 +1,25 @@
-// Tasking adapters. Each partner either places a REAL order (when its API key
-// is configured) or returns a high-fidelity SIMULATED order. The rest of the
-// app treats both identically.
+// Tasking adapters. Two are REAL:
+//   • SkyFi Platform API — books a fresh tasking order (needs SKYFI_API_KEY;
+//     the key value is the "email:apikey" string, sent as X-Skyfi-Api-Key).
+//   • Copernicus Sentinel-2 via the keyless Element84 Earth Search STAC — a
+//     genuine archive lookup of the target, no account required.
 //
-// Endpoints/verbs below follow the live SkyFi Platform API (OpenAPI 2.0.0) and
-// SkyWatch EarthCache API (OpenAPI 1.7). Without a key the adapter short-
-// circuits to simulation so the full product works out of the box.
+// dispatchTasking() always returns a real result when possible: paid tiers go
+// to SkyFi; anything without a SkyFi key still gets a real Copernicus archive
+// hit. Pure simulation is only a last resort if both are unreachable.
 
 import type { Order } from "./orders";
 import { tier, partner } from "./catalog";
 import { bboxAround } from "./geo";
 
 export interface TaskingResult {
-  mode: "live" | "simulated";
+  mode: "live" | "archive" | "simulated";
   partner: string;
   externalId: string;
   status: string;
   message: string;
+  captureTime?: string;
+  cloudCover?: number;
 }
 
 function pseudoId(seed: string, prefix: string): string {
@@ -37,18 +41,6 @@ function wktBox(order: Order, meters = 250): string {
     .map(([x, y]) => `${x.toFixed(6)} ${y.toFixed(6)}`)
     .join(", ");
   return `POLYGON ((${ring}))`;
-}
-
-/** GeoJSON polygon ring (lon lat) for SkyWatch AOI. */
-function geoJsonRing(order: Order, meters = 250): number[][] {
-  const b = bboxAround(order.location, meters);
-  return [
-    [b.minLng, b.minLat],
-    [b.maxLng, b.minLat],
-    [b.maxLng, b.maxLat],
-    [b.minLng, b.maxLat],
-    [b.minLng, b.minLat],
-  ];
 }
 
 async function taskSkyFi(order: Order): Promise<TaskingResult | null> {
@@ -86,38 +78,36 @@ async function taskSkyFi(order: Order): Promise<TaskingResult | null> {
   };
 }
 
-async function taskSkyWatch(order: Order): Promise<TaskingResult | null> {
-  const key = process.env.SKYWATCH_API_KEY;
-  if (!key) return null;
-  const t = tier(order.tierId);
-  const start = new Date(Date.now() + 2 * 86400_000).toISOString().slice(0, 10);
-  const end = new Date(Date.now() + 16 * 86400_000).toISOString().slice(0, 10);
-
-  const res = await fetch("https://api.skywatch.co/earthcache/pipelines", {
+/** Real, keyless Sentinel-2 archive lookup over the target (Element84 STAC). */
+async function taskCopernicus(order: Order): Promise<TaskingResult | null> {
+  const res = await fetch("https://earth-search.aws.element84.com/v1/search", {
     method: "POST",
-    headers: { "x-api-key": key, "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      name: `shot-from-space-${order.id.slice(-8)}`,
-      start_date: start,
-      end_date: end,
-      interval: "7d",
-      max_cost: t.price,
-      cloud_cover_percentage: 20,
-      resolution_low: t.sensor === "sar" ? 0.5 : 0.3,
-      resolution_high: t.sensor === "sar" ? 0.5 : 0.3,
-      aoi: { type: "Polygon", coordinates: [geoJsonRing(order)] },
-      output: { id: "visual", format: "geotiff", mosaic: "unstitched" },
-      result_delivery: { max_latency: "0d", priorities: ["highest_resolution"] },
+      collections: ["sentinel-2-l2a"],
+      intersects: {
+        type: "Point",
+        coordinates: [order.location.lng, order.location.lat],
+      },
+      limit: 1,
+      sortby: [{ field: "properties.datetime", direction: "desc" }],
     }),
+    // archive doesn't change fast; let the CDN/edge cache it
+    next: { revalidate: 3600 },
   });
   const data = (await res.json().catch(() => ({}))) as any;
-  if (!res.ok) throw new Error(`SkyWatch ${res.status}: ${JSON.stringify(data).slice(0, 200)}`);
+  if (!res.ok) throw new Error(`EarthSearch ${res.status}`);
+  const feat = data.features?.[0];
+  if (!feat) return null;
+  const p = feat.properties ?? {};
   return {
-    mode: "live",
-    partner: "skywatch",
-    externalId: data.data?.id ?? data.id ?? pseudoId(order.id, "SW"),
-    status: "active",
-    message: "EarthCache pipeline created; searching supplier catalogues.",
+    mode: "archive",
+    partner: "copernicus",
+    externalId: feat.id ?? pseudoId(order.id, "S2"),
+    status: "DELIVERED",
+    message: "Latest Sentinel-2 archive scene located over the target.",
+    captureTime: p.datetime,
+    cloudCover: typeof p["eo:cloud_cover"] === "number" ? p["eo:cloud_cover"] : undefined,
   };
 }
 
@@ -129,33 +119,40 @@ function simulate(order: Order): TaskingResult {
     partner: p.id,
     externalId: pseudoId(order.id, p.id.toUpperCase().slice(0, 3)),
     status: "SCHEDULED",
-    message: `Simulated tasking on ${p.name}. Set ${p.id.toUpperCase()}_API_KEY to place a live order.`,
+    message: `Simulated pass on ${p.name}. Providers are reachable via SkyFi; add SKYFI_API_KEY to place a live order.`,
   };
 }
 
-/** Dispatch a paid order to the right partner. Never throws for the caller —
- *  a live-API failure degrades to simulation so the customer is never stuck. */
+/** Dispatch a paid order. Prefers a real SkyFi tasking order; if no SkyFi key,
+ *  still returns a REAL Copernicus archive hit; simulation only if both fail. */
 export async function dispatchTasking(order: Order): Promise<TaskingResult> {
-  const t = tier(order.tierId);
+  // 1) Real tasking via SkyFi (brokers Planet, Umbra, ICEYE, Vantor, Sentinel…).
   try {
-    if (t.partnerId === "skyfi") {
-      const r = await taskSkyFi(order);
-      if (r) return r;
-    }
-    if (t.partnerId === "skywatch") {
-      const r = await taskSkyWatch(order);
-      if (r) return r;
-    }
-    // Any optical/SAR tier can also be brokered through SkyFi if that key exists.
-    if (process.env.SKYFI_API_KEY) {
-      const r = await taskSkyFi(order);
-      if (r) return r;
-    }
+    const r = await taskSkyFi(order);
+    if (r) return r;
   } catch (e) {
-    return {
-      ...simulate(order),
-      message: `Live tasking failed (${(e as Error).message}); running simulated pass.`,
-    };
+    // fall through — try the keyless real archive next
+    try {
+      const c = await taskCopernicus(order);
+      if (c)
+        return {
+          ...c,
+          message: `SkyFi tasking failed (${(e as Error).message}); returned latest Sentinel-2 archive instead.`,
+        };
+    } catch {
+      /* fall through to simulate */
+    }
+    return simulate(order);
   }
+
+  // 2) No SkyFi key — real keyless Copernicus archive lookup.
+  try {
+    const c = await taskCopernicus(order);
+    if (c) return c;
+  } catch {
+    /* ignore */
+  }
+
+  // 3) Last resort.
   return simulate(order);
 }

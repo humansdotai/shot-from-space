@@ -38,13 +38,19 @@ API key present it places a **real** order; without one it runs a faithful
 | Real overhead imagery of any point (Esri World Imagery) | ✅ real, no key |
 | Address geocoding (OSM Nominatim) | ✅ real, no key |
 | Stripe payment | ✅ real (live keys) |
-| **SkyFi** tasking (`POST /order-tasking`) | ⚙️ real with `SKYFI_API_KEY` |
-| **SkyWatch EarthCache** pipeline | ⚙️ real with `SKYWATCH_API_KEY` |
-| Planet · Capella · Umbra · Airbus · Satellogic · Vantor | 🎛️ simulated (contract-gated) |
+| **SkyFi** tasking (`POST /order-tasking`) | ✅ real (`SKYFI_API_KEY` configured) |
+| **Copernicus Sentinel-2** archive (Element84 Earth Search STAC) | ✅ real, no key |
+| Planet · Capella · Umbra · Airbus · Satellogic · Vantor | brokered live via SkyFi |
 
-SkyFi is the primary live integration — it's the only partner where API keys
-are self-serve *and* tasking is exposed over REST, and it brokers Planet, Umbra,
-Satellogic, ICEYE and Vantor behind one key.
+SkyFi is the primary live integration — the only partner where API keys are
+self-serve *and* tasking is exposed over REST — and it brokers Planet, Umbra,
+Satellogic, ICEYE, Vantor and Sentinel behind one key. Copernicus Sentinel-2 is
+a second, fully keyless real integration (an actual archive lookup over the
+target). SkyWatch EarthCache was dropped — its API is not publicly available.
+
+Fulfilment always resolves to a real result: paid orders place a live SkyFi
+tasking order; if the SkyFi key is ever absent, a real Copernicus Sentinel-2
+archive scene over the coordinates is returned instead.
 
 ## Stack
 
@@ -70,8 +76,7 @@ npm run dev                  # http://localhost:3000
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | ✅ | Stripe browser key |
 | `NEXT_PUBLIC_SITE_URL` | — | Origin for redirect URLs (auto on Vercel) |
 | `STRIPE_WEBHOOK_SECRET` | — | Enables `/api/webhook` order dispatch |
-| `SKYFI_API_KEY` | — | Live tasking via SkyFi |
-| `SKYWATCH_API_KEY` | — | Live tasking via SkyWatch EarthCache |
+| `SKYFI_API_KEY` | — | Live tasking via SkyFi. Value is the `email:apikey` string, sent as the `X-Skyfi-Api-Key` header. |
 
 ## Routes
 

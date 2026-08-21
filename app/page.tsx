@@ -36,7 +36,7 @@ export default function Home() {
               </Link>
             </div>
             <div className="row wrap-gap hero-stats">
-              <Stat n="8" l="imagery partners" />
+              <Stat n={String(PARTNERS.length)} l="imagery partners" />
               <Stat n="0.25 m" l="best resolution" />
               <Stat n="LEO" l="live tracked" />
             </div>
