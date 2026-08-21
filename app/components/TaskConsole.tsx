@@ -254,6 +254,16 @@ export default function TaskConsole() {
               {busy ? "Opening secure checkout…" : `◎ Task satellite · pay $${selectedTier.price}`}
             </button>
             {err && <div className="err mono">{err}</div>}
+            <a
+              className="demo-link mono"
+              href={`/order/demo?lat=${loc.lat.toFixed(5)}&lng=${loc.lng.toFixed(
+                5
+              )}&tier=${tierId}&label=${encodeURIComponent(
+                label
+              )}&target=${encodeURIComponent(target)}`}
+            >
+              ▷ Preview a demo pass — no charge
+            </a>
             <div className="faint mono" style={{ fontSize: 10, marginTop: 10, textAlign: "center", letterSpacing: "0.04em" }}>
               Secured by Stripe · captures dispatched on payment
             </div>
@@ -303,4 +313,6 @@ const css = `
 .tier-price{ font-size:15px; font-weight:700; }
 .tier-tag{ font-size:12px; margin-top:2px; line-height:1.4; }
 .err{ margin-top:10px; color:var(--red); font-size:11px; text-align:center; }
+.demo-link{ display:block; text-align:center; margin-top:12px; font-size:11px; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; transition:color .15s; }
+.demo-link:hover{ color:var(--cobalt); }
 `;

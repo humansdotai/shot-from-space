@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import GlobeClient from "../../components/GlobeClient";
-import { tier as getTier, partner as getPartner } from "@/lib/catalog";
+import { tier as getTier, partner as getPartner, TIERS } from "@/lib/catalog";
 import { esriImageUrl, fmtCoord } from "@/lib/geo";
 import type { Order } from "@/lib/orders";
 
@@ -32,9 +33,34 @@ export default function OrderClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef<number | null>(null);
+  const sp = useSearchParams();
+  const isDemo = id === "demo";
+
+  // demo pass: synthesize a paid order from query params, no Stripe, no charge
+  useEffect(() => {
+    if (!isDemo) return;
+    const lat = parseFloat(sp.get("lat") ?? "48.8584");
+    const lng = parseFloat(sp.get("lng") ?? "2.2945");
+    const tierId = TIERS.some((t) => t.id === sp.get("tier"))
+      ? (sp.get("tier") as string)
+      : "priority";
+    setOrder({
+      id: "demo",
+      tierId,
+      location: { lat, lng },
+      label: sp.get("label") || "Demo target",
+      target: sp.get("target") || "this location",
+      paid: true,
+      amount: 0,
+      currency: "USD",
+      createdAt: 0,
+    });
+    setLoading(false);
+  }, [isDemo, sp]);
 
   // fetch order (poll briefly in case the webhook lags)
   useEffect(() => {
+    if (isDemo) return;
     let tries = 0;
     let stop = false;
     async function load() {
@@ -64,7 +90,7 @@ export default function OrderClient({ id }: { id: string }) {
     return () => {
       stop = true;
     };
-  }, [id]);
+  }, [id, isDemo]);
 
   // acquisition clock (starts once paid)
   useEffect(() => {
@@ -153,9 +179,12 @@ export default function OrderClient({ id }: { id: string }) {
           <span className="sat-dot" />
           SHOT&nbsp;FROM&nbsp;SPACE
         </Link>
-        <span className="chip on">
-          ● {done ? "CAPTURE DELIVERED" : "ACQUISITION LIVE"}
-        </span>
+        <div className="row" style={{ gap: 8 }}>
+          {isDemo && <span className="chip sar">◑ DEMO PASS</span>}
+          <span className="chip on">
+            ● {done ? "CAPTURE DELIVERED" : "ACQUISITION LIVE"}
+          </span>
+        </div>
       </div>
 
       {/* mission panel */}
@@ -173,7 +202,9 @@ export default function OrderClient({ id }: { id: string }) {
               {tier?.resolution} {tier?.sensor}
             </span>
             <span className="chip">{partner?.name}</span>
-            <span className="chip">${(order.amount / 100).toFixed(0)} paid</span>
+            <span className="chip">
+              {isDemo ? "no charge" : `$${(order.amount / 100).toFixed(0)} paid`}
+            </span>
           </div>
         </div>
 
