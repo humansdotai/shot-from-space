@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import "leaflet/dist/leaflet.css";
+// leaflet's stylesheet is imported globally in app/layout.tsx so the tile panes
+// are always styled, even when this module is code-split behind next/dynamic.
 import type { LatLng } from "@/lib/geo";
 
 interface Props {
