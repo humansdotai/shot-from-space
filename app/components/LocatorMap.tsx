@@ -25,8 +25,9 @@ export default function LocatorMap({ value, onChange, height = 300 }: Props) {
     let disposed = false;
 
     (async () => {
-      const L = (await import("leaflet")).default;
-      if (disposed || !elRef.current) return;
+      const mod: any = await import("leaflet");
+      const L = mod.default ?? mod; // handle both ESM default + namespace interop
+      if (disposed || !elRef.current || typeof L?.map !== "function") return;
 
       map = L.map(elRef.current, {
         center: [value.lat, value.lng],
@@ -54,13 +55,22 @@ export default function LocatorMap({ value, onChange, height = 300 }: Props) {
         onChangeRef.current({ lat: c.lat, lng: c.lng });
       };
       map.on("moveend", emit);
-      // ensure tiles lay out correctly once mounted
-      setTimeout(() => map.invalidateSize(), 60);
+      // ensure tiles lay out correctly once mounted / after late layout
+      const fix = () => map && map.invalidateSize();
+      [60, 250, 600, 1200].forEach((ms) => setTimeout(fix, ms));
+      if (typeof ResizeObserver !== "undefined") {
+        const ro = new ResizeObserver(fix);
+        ro.observe(elRef.current);
+        (map as any).__ro = ro;
+      }
     })();
 
     return () => {
       disposed = true;
-      if (map) map.remove();
+      if (map) {
+        if ((map as any).__ro) (map as any).__ro.disconnect();
+        map.remove();
+      }
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
