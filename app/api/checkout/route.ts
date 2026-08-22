@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, siteUrl } from "@/lib/stripe";
-import { tier } from "@/lib/catalog";
+import { tier, computePrice } from "@/lib/catalog";
 import { encodeMetadata, type OrderInput } from "@/lib/orders";
 
 export const runtime = "nodejs";
@@ -44,12 +44,19 @@ export async function POST(req: NextRequest) {
           quantity: 1,
           price_data: {
             currency: t.currency,
-            unit_amount: t.price * 100,
+            // price is derived server-side from the chosen spec — never trust
+            // a client-supplied amount
+            unit_amount:
+              computePrice(
+                t.id,
+                body.sensor ?? t.sensor,
+                body.resolution ?? t.resolution
+              ) * 100,
             product_data: {
               name: `${t.name} — satellite tasking`,
               description: `${body.resolution ?? t.resolution} ${(
                 body.sensor ?? t.sensor
-              ).toUpperCase()} capture · ${body.label}`,
+              ).toUpperCase()} capture${body.sat ? ` · ${body.sat}` : ""} · ${body.label}`,
             },
           },
         },

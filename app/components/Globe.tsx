@@ -33,9 +33,13 @@ interface GlobeProps {
   sensor?: "optical" | "sar";
   autoRotate?: boolean;
   focusTarget?: boolean;
+  /** camera distance when focusing the target (globe radius = 100) */
+  focusDistance?: number;
   height?: string;
   onStats?: (s: { count: number; source: string }) => void;
   onSats?: (sats: SatView[]) => void;
+  /** fired when a satellite point is clicked (null = clicked empty space) */
+  onSelectSat?: (name: string | null) => void;
 }
 
 function classify(name: string): "optical" | "sar" | "station" {
@@ -95,16 +99,18 @@ export default function Globe(props: GlobeProps) {
     highlightName = null,
     autoRotate = true,
     focusTarget = false,
+    focusDistance = 260,
     height = "100%",
     onStats,
     onSats,
+    onSelectSat,
   } = props;
 
   const mountRef = useRef<HTMLDivElement>(null);
-  const cbRef = useRef({ onStats, onSats });
-  cbRef.current = { onStats, onSats };
-  const propsRef = useRef({ target, highlightName, autoRotate, focusTarget });
-  propsRef.current = { target, highlightName, autoRotate, focusTarget };
+  const cbRef = useRef({ onStats, onSats, onSelectSat });
+  cbRef.current = { onStats, onSats, onSelectSat };
+  const propsRef = useRef({ target, highlightName, autoRotate, focusTarget, focusDistance });
+  propsRef.current = { target, highlightName, autoRotate, focusTarget, focusDistance };
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -340,10 +346,15 @@ export default function Globe(props: GlobeProps) {
       return t ? `${t.lat.toFixed(3)},${t.lng.toFixed(3)}` : "";
     }
 
-    // camera focus
+    // camera focus (accounts for current world rotation so the target frames)
+    let lastFocusDist = propsRef.current.focusDistance;
     function focusOn(lat: number, lng: number) {
-      const dir = coord(lat, lng, 0).clone().normalize();
-      const to = dir.multiplyScalar(260);
+      const dist = propsRef.current.focusDistance ?? 260;
+      const dir = coord(lat, lng, 0)
+        .clone()
+        .applyQuaternion(world.quaternion)
+        .normalize();
+      const to = dir.multiplyScalar(dist);
       const from = camera.position.clone();
       const start = performance.now();
       const dur = 1200;
@@ -358,6 +369,34 @@ export default function Globe(props: GlobeProps) {
     if (propsRef.current.focusTarget && propsRef.current.target) {
       focusOn(propsRef.current.target.lat, propsRef.current.target.lng);
     }
+
+    // click a satellite to select it
+    const raycaster = new THREE.Raycaster();
+    raycaster.params.Points = { threshold: 3.2 };
+    const ndc = new THREE.Vector2();
+    let downX = 0,
+      downY = 0;
+    function onDown(e: PointerEvent) {
+      downX = e.clientX;
+      downY = e.clientY;
+    }
+    function onUp(e: PointerEvent) {
+      // ignore drags (orbit control)
+      if (Math.abs(e.clientX - downX) > 5 || Math.abs(e.clientY - downY) > 5) return;
+      if (!cbRef.current.onSelectSat || recs.length === 0) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObject(satPoints);
+      if (hits.length && hits[0].index != null && recs[hits[0].index]) {
+        cbRef.current.onSelectSat(recs[hits[0].index].name);
+      } else {
+        cbRef.current.onSelectSat(null);
+      }
+    }
+    renderer.domElement.addEventListener("pointerdown", onDown);
+    renderer.domElement.addEventListener("pointerup", onUp);
 
     // animation
     let lastProp = 0;
@@ -379,6 +418,14 @@ export default function Globe(props: GlobeProps) {
       if (propsRef.current.highlightName !== lastHl) {
         lastHl = propsRef.current.highlightName;
         buildHighlight();
+      }
+      if (
+        propsRef.current.focusDistance !== lastFocusDist &&
+        propsRef.current.focusTarget &&
+        propsRef.current.target
+      ) {
+        lastFocusDist = propsRef.current.focusDistance;
+        focusOn(propsRef.current.target.lat, propsRef.current.target.lng);
       }
 
       // spin
@@ -422,7 +469,15 @@ export default function Globe(props: GlobeProps) {
 
         if (cbRef.current.onSats) {
           views.sort((a, b) => a.groundKm - b.groundKm);
-          cbRef.current.onSats(views.slice(0, 8));
+          const top = views.slice(0, 12);
+          // always surface the highlighted sat's live telemetry to the parent
+          if (hn) {
+            const hv = views.find((v) =>
+              v.name.toUpperCase().includes(hn.toUpperCase())
+            );
+            if (hv && !top.includes(hv)) top.unshift(hv);
+          }
+          cbRef.current.onSats(top);
         }
       }
 
@@ -445,6 +500,8 @@ export default function Globe(props: GlobeProps) {
       disposed = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      renderer.domElement.removeEventListener("pointerdown", onDown);
+      renderer.domElement.removeEventListener("pointerup", onUp);
       controls.dispose();
       renderer.dispose();
       sprite.dispose();

@@ -231,3 +231,38 @@ export function resolutionToSkyfi(label: string | undefined, sensor: Sensor): st
   const stop = RESOLUTIONS.find((r) => r.label === label);
   return stop?.skyfi ?? "VERY HIGH";
 }
+
+// ── Pricing ────────────────────────────────────────────────────────────────
+// Price is driven primarily by ground resolution (sharper = pricier), with a
+// SAR premium and a per-tier surcharge for priority/bundled products.
+const RES_PRICE: Record<string, number> = {
+  "0.25 m": 79,
+  "0.30 m": 49,
+  "0.50 m": 29,
+  "1 m": 19,
+  "3 m": 12,
+  "10 m": 9,
+};
+const TIER_SURCHARGE: Record<string, number> = {
+  priority: 15,
+  dossier: 25,
+};
+
+/** Final USD price for a concrete capture spec. Shared by the console + the
+ *  checkout route so the client never sets its own amount. */
+export function computePrice(
+  tierId: string,
+  sensor: Sensor,
+  resolutionLabel: string
+): number {
+  const base = RES_PRICE[resolutionLabel] ?? 29;
+  const sar = sensor === "sar" ? 1.3 : 1;
+  const surcharge = TIER_SURCHARGE[tierId] ?? 0;
+  return Math.max(9, Math.round(base * sar + surcharge));
+}
+
+/** Representative price shown on a tier card (its default spec). */
+export function tierPrice(t: Tier): number {
+  const label = RESOLUTIONS[resolutionIndexFor(t.resolution)].label;
+  return computePrice(t.id, t.sensor, label);
+}

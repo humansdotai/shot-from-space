@@ -54,6 +54,7 @@ export default function OrderClient({ id }: { id: string }) {
       sensor: sensorParam === "sar" || sensorParam === "optical" ? sensorParam : undefined,
       resolution: sp.get("res") || undefined,
       attemptAt: sp.get("attemptAt") || undefined,
+      sat: sp.get("sat") || undefined,
       paid: true,
       amount: 0,
       currency: "USD",
@@ -123,12 +124,15 @@ export default function OrderClient({ id }: { id: string }) {
   // capture spec honours the customer's chosen parameters, falling back to tier
   const effSensor = order?.sensor ?? partner?.sensor ?? "optical";
   const effResolution = order?.resolution ?? tier?.resolution ?? "0.3 m";
+  // highlight the ACTUAL tasked satellite (from the selected pass window) when
+  // known, else a representative one for the sensor
   const highlight =
-    effSensor === "sar"
+    order?.sat ||
+    (effSensor === "sar"
       ? partner?.id === "umbra"
         ? "UMBRA"
         : "CAPELLA"
-      : "SKYSAT";
+      : "SKYSAT");
   const globeGroup = effSensor === "sar" ? "sar" : "planet";
 
   if (loading)
@@ -175,7 +179,8 @@ export default function OrderClient({ id }: { id: string }) {
           target={order.location}
           highlightName={highlight}
           focusTarget
-          autoRotate={!done}
+          focusDistance={done ? 168 : 205}
+          autoRotate={false}
         />
       </div>
 
@@ -212,6 +217,11 @@ export default function OrderClient({ id }: { id: string }) {
               {isDemo ? "no charge" : `$${(order.amount / 100).toFixed(0)} paid`}
             </span>
           </div>
+          {order.sat && (
+            <div className="mono" style={{ fontSize: 11, marginTop: 9, color: "var(--green)" }}>
+              🛰 tasked satellite · {order.sat}
+            </div>
+          )}
           {order.attemptAt && (
             <div className="mono faint" style={{ fontSize: 10.5, marginTop: 8 }}>
               ⧗ attempt window from{" "}

@@ -7,6 +7,8 @@ import {
   PARTNERS,
   RESOLUTIONS,
   resolutionIndexFor,
+  computePrice,
+  tierPrice,
 } from "@/lib/catalog";
 import { fmtCoord, type LatLng } from "@/lib/geo";
 import LocatorMapClient from "./LocatorMapClient";
@@ -63,9 +65,11 @@ export default function TaskConsole() {
   const [winLoading, setWinLoading] = useState(false);
   const [tracked, setTracked] = useState(0);
   const [pickedPeak, setPickedPeak] = useState<number | null>(null);
+  const [pickedSat, setPickedSat] = useState<string | null>(null);
   const winTimer = useRef<any>(null);
 
   const selectedTier = TIERS.find((t) => t.id === tierId)!;
+  const livePrice = computePrice(tierId, sensor, RESOLUTIONS[resIdx].label);
 
   useEffect(() => {
     const now = nowLocalInput();
@@ -86,8 +90,18 @@ export default function TaskConsole() {
           )}&sensor=${sensor}&now=${Date.now()}`
         );
         const d = await r.json();
-        setWindows(d.windows ?? []);
+        const ws: PassWindow[] = d.windows ?? [];
+        setWindows(ws);
         setTracked(d.tracked ?? 0);
+        // auto-select the soonest real window so the attempt is always a live,
+        // API-derived pass (unless the user already locked a still-valid one)
+        if (ws.length) {
+          const keep = ws.find((w) => w.peak === pickedPeak);
+          selectWindow(keep ?? ws[0]);
+        } else {
+          setPickedPeak(null);
+          setPickedSat(null);
+        }
       } catch {
         setWindows([]);
       } finally {
@@ -95,11 +109,13 @@ export default function TaskConsole() {
       }
     }, 600);
     return () => clearTimeout(winTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loc.lat, loc.lng, sensor]);
 
   function selectWindow(w: PassWindow) {
     setAttemptAt(msToLocalInput(w.peak));
     setPickedPeak(w.peak);
+    setPickedSat(w.satName);
   }
 
   // selecting a tier seeds the capture parameters with its spec
@@ -170,6 +186,7 @@ export default function TaskConsole() {
           sensor,
           resolution: RESOLUTIONS[resIdx].label,
           attemptAt: new Date(attemptAt || Date.now()).toISOString(),
+          sat: pickedSat ?? undefined,
         }),
       });
       const d = await res.json();
@@ -384,6 +401,7 @@ export default function TaskConsole() {
                 onChange={(e) => {
                   setAttemptAt(e.target.value);
                   setPickedPeak(null);
+                  setPickedSat(null);
                 }}
                 aria-label="earliest attempt"
               />
@@ -413,7 +431,7 @@ export default function TaskConsole() {
                 >
                   <div className="row spread">
                     <span className="tier-name">{t.name}</span>
-                    <span className="tier-price mono">${t.price}</span>
+                    <span className="tier-price mono">from ${tierPrice(t)}</span>
                   </div>
                   <div className="tier-tag muted">{t.tagline}</div>
                   <div className="row wrap-gap" style={{ gap: 6, marginTop: 8 }}>
@@ -436,7 +454,7 @@ export default function TaskConsole() {
               <span className={`chip ${sensor === "sar" ? "sar" : ""}`}>
                 {RESOLUTIONS[resIdx].label} {sensor}
               </span>
-              <span className="chip">{partner(selectedTier.partnerId).name}</span>
+              {pickedSat && <span className="chip on">◉ {pickedSat}</span>}
               {attemptAt && (
                 <span className="chip">
                   {new Date(attemptAt).toLocaleDateString(undefined, {
@@ -452,14 +470,12 @@ export default function TaskConsole() {
             </div>
             <div className="row spread" style={{ marginBottom: 4 }}>
               <span className="muted mono" style={{ fontSize: 12 }}>
-                {selectedTier.name}
+                {selectedTier.name} · {RESOLUTIONS[resIdx].label} {sensor}
               </span>
-              <span className="mono" style={{ fontSize: 20, fontWeight: 700 }}>
-                ${selectedTier.price}.00
-              </span>
+              <span className="price-total mono">${livePrice}.00</span>
             </div>
             <button className="btn" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={checkout} disabled={busy}>
-              {busy ? "Opening secure checkout…" : `◎ Task satellite · pay $${selectedTier.price}`}
+              {busy ? "Opening secure checkout…" : `◎ Task satellite · pay $${livePrice}`}
             </button>
             {err && <div className="err mono">{err}</div>}
             <a
@@ -470,15 +486,12 @@ export default function TaskConsole() {
                 RESOLUTIONS[resIdx].label
               )}&attemptAt=${encodeURIComponent(
                 attemptAt ? new Date(attemptAt).toISOString() : ""
-              )}&label=${encodeURIComponent(label)}&target=${encodeURIComponent(
-                target
-              )}`}
+              )}&sat=${encodeURIComponent(pickedSat ?? "")}&label=${encodeURIComponent(
+                label
+              )}&target=${encodeURIComponent(target)}`}
             >
               ▷ Preview a demo pass — no charge
             </a>
-            <div className="faint mono" style={{ fontSize: 10, marginTop: 10, textAlign: "center", letterSpacing: "0.04em" }}>
-              Secured by Stripe · captures dispatched on payment
-            </div>
           </div>
         </div>
       </div>
@@ -517,12 +530,13 @@ const css = `
 .zoombar button{ width:26px; height:26px; border:1px solid var(--line-2); background:rgba(10,14,23,.8); color:var(--ink); border-radius:7px; cursor:pointer; font-size:15px; line-height:1; }
 .zoombar button:hover{ background: var(--cobalt); border-color:var(--cobalt); }
 .tiers{ display:flex; flex-direction:column; }
-.tier{ text-align:left; background:none; border:none; border-bottom:1px solid var(--line); padding:14px 18px; cursor:pointer; transition: background .12s; position:relative; }
+.tier{ text-align:left; background:none; border:none; border-bottom:1px solid var(--line); padding:14px 18px; cursor:pointer; transition: background .12s; position:relative; color:var(--ink); }
 .tier:hover{ background: rgba(255,255,255,.03); }
 .tier.on{ background: var(--cobalt-soft); }
 .tier.on::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--cobalt); }
-.tier-name{ font-family:var(--display); font-weight:600; font-size:15px; }
-.tier-price{ font-size:15px; font-weight:700; }
+.tier-name{ font-family:var(--display); font-weight:600; font-size:15px; color:var(--ink); }
+.tier-price{ font-size:13px; font-weight:700; color:#a7bcff; white-space:nowrap; }
+.price-total{ font-size:22px; font-weight:700; color:var(--ink); letter-spacing:-.01em; }
 .tier-tag{ font-size:12px; margin-top:2px; line-height:1.4; }
 .err{ margin-top:10px; color:var(--red); font-size:11px; text-align:center; }
 .demo-link{ display:block; text-align:center; margin-top:12px; font-size:11px; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; transition:color .15s; }

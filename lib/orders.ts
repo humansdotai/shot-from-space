@@ -13,6 +13,7 @@ export interface OrderInput {
   sensor?: "optical" | "sar"; // capture modality
   resolution?: string; // requested GSD label, e.g. "0.30 m"
   attemptAt?: string; // ISO earliest-attempt timestamp for the tasking window
+  sat?: string; // satellite tasked for the selected pass window
 }
 
 export interface Order extends OrderInput {
@@ -34,6 +35,7 @@ export function encodeMetadata(o: OrderInput): Record<string, string> {
     sensor: o.sensor ?? "",
     resolution: o.resolution ?? "",
     attemptAt: o.attemptAt ?? "",
+    sat: (o.sat ?? "").slice(0, 60),
   };
 }
 
@@ -55,6 +57,7 @@ export function decodeMetadata(
     sensor: md.sensor === "sar" || md.sensor === "optical" ? md.sensor : undefined,
     resolution: md.resolution || undefined,
     attemptAt: md.attemptAt || undefined,
+    sat: md.sat || undefined,
     paid,
     amount,
     currency,

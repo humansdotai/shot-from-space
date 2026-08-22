@@ -125,11 +125,7 @@ export default function Home() {
           <p className="lede" style={{ marginTop: 16 }}>
             No sales calls, no quote forms, no account managers. An autonomous
             agent watches the passes, prices the capture, takes the payment and
-            dispatches the tasking order — the same way{" "}
-            <a href="https://0humans.com" target="_blank" rel="noreferrer" style={{ color: "var(--cobalt)" }}>
-              0humans
-            </a>{" "}
-            runs whole companies with nobody at the desk.
+            dispatches the tasking order.
           </p>
         </div>
       </section>
