@@ -14,6 +14,7 @@ export interface OrderInput {
   resolution?: string; // requested GSD label, e.g. "0.30 m"
   attemptAt?: string; // ISO earliest-attempt timestamp for the tasking window
   sat?: string; // satellite tasked for the selected pass window
+  posterSizeId?: string; // optional bundled poster (Gelato) size id
 }
 
 export interface Order extends OrderInput {
@@ -36,6 +37,7 @@ export function encodeMetadata(o: OrderInput): Record<string, string> {
     resolution: o.resolution ?? "",
     attemptAt: o.attemptAt ?? "",
     sat: (o.sat ?? "").slice(0, 60),
+    posterSizeId: o.posterSizeId ?? "",
   };
 }
 
@@ -58,6 +60,7 @@ export function decodeMetadata(
     resolution: md.resolution || undefined,
     attemptAt: md.attemptAt || undefined,
     sat: md.sat || undefined,
+    posterSizeId: md.posterSizeId || undefined,
     paid,
     amount,
     currency,

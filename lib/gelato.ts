@@ -5,6 +5,17 @@
 
 const BASE = "https://order.gelatoapis.com/v4";
 
+// Markup applied when a poster is bundled with the satellite tasking (the
+// "package"): covers combined handling/packaging.
+export const PACKAGE_MARKUP = 0.1;
+
+/** Total for a satellite capture optionally bundled with a poster.
+ *  When a poster is included the combined subtotal carries a 10% package markup. */
+export function packageTotal(satPrice: number, posterPrice: number | null): number {
+  if (!posterPrice) return satPrice;
+  return Math.round((satPrice + posterPrice) * (1 + PACKAGE_MARKUP));
+}
+
 export interface PosterSize {
   id: string;
   label: string; // imperial

@@ -39,6 +39,11 @@ export default function OrderClient({ id }: { id: string }) {
   const [posterSizeId, setPosterSizeId] = useState("16");
   const [posterBusy, setPosterBusy] = useState(false);
   const [posterErr, setPosterErr] = useState<string | null>(null);
+  const [posterStatus, setPosterStatus] = useState<{
+    sizeId: string;
+    label: string;
+    gelatoId: string | null;
+  } | null>(null);
 
   async function orderPoster() {
     if (!order) return;
@@ -84,6 +89,7 @@ export default function OrderClient({ id }: { id: string }) {
       resolution: sp.get("res") || undefined,
       attemptAt: sp.get("attemptAt") || undefined,
       sat: sp.get("sat") || undefined,
+      posterSizeId: sp.get("poster") || undefined,
       paid: true,
       amount: 0,
       currency: "USD",
@@ -102,12 +108,15 @@ export default function OrderClient({ id }: { id: string }) {
         const r = await fetch(`/api/order/${id}`);
         const d = await r.json();
         if (stop) return;
+        if (d.poster) setPosterStatus(d.poster);
         if (d.order) {
           setOrder(d.order);
           setLoading(false);
-          if (!d.order.paid && tries < 6) {
+          // keep polling until paid, or until a bundled poster is placed
+          const posterPending = d.order.posterSizeId && !d.poster?.gelatoId;
+          if ((!d.order.paid || posterPending) && tries < 8) {
             tries++;
-            setTimeout(load, 1500);
+            setTimeout(load, 1800);
           }
         } else {
           setErr(d.error || "Order not found.");
@@ -329,6 +338,27 @@ export default function OrderClient({ id }: { id: string }) {
 
           {/* order a physical poster (Gelato print-on-demand) */}
           <hr className="hair" />
+          {order.posterSizeId ? (
+            <div style={{ padding: "12px 14px 14px" }}>
+              <div className="row spread" style={{ marginBottom: 6 }}>
+                <span className="label">🖼 Poster included</span>
+                <span className="faint mono" style={{ fontSize: 9 }}>
+                  by Gelato
+                </span>
+              </div>
+              <div className="mono" style={{ fontSize: 12, color: "var(--green)" }}>
+                ✓ {posterStatus?.label || `${order.posterSizeId}"`} print ·{" "}
+                {posterStatus?.gelatoId
+                  ? `queued (${String(posterStatus.gelatoId).slice(0, 8)}…)`
+                  : isDemo
+                  ? "demo — not submitted"
+                  : "submitting to print network…"}
+              </div>
+              <div className="faint mono" style={{ fontSize: 10, marginTop: 6 }}>
+                Shipping to the address you entered at checkout.
+              </div>
+            </div>
+          ) : (
           <div style={{ padding: "12px 14px 14px" }}>
             <div className="row spread" style={{ marginBottom: 10 }}>
               <span className="label">🖼 Print it as a poster</span>
@@ -364,6 +394,7 @@ export default function OrderClient({ id }: { id: string }) {
               Museum-grade matte · printed &amp; shipped worldwide
             </div>
           </div>
+          )}
         </div>
       )}
 

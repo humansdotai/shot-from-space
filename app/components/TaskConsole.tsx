@@ -11,6 +11,7 @@ import {
   tierPrice,
 } from "@/lib/catalog";
 import { fmtCoord, type LatLng } from "@/lib/geo";
+import { POSTER_SIZES, packageTotal, PACKAGE_MARKUP } from "@/lib/gelato";
 import LocatorMapClient from "./LocatorMapClient";
 
 // local datetime-local string for "now", rounded to the minute
@@ -68,8 +69,13 @@ export default function TaskConsole() {
   const [pickedSat, setPickedSat] = useState<string | null>(null);
   const winTimer = useRef<any>(null);
 
+  const [posterId, setPosterId] = useState<string | null>(null);
+
   const selectedTier = TIERS.find((t) => t.id === tierId)!;
   const livePrice = computePrice(tierId, sensor, RESOLUTIONS[resIdx].label);
+  const poster = posterId ? POSTER_SIZES.find((p) => p.id === posterId)! : null;
+  const markup = poster ? Math.round((livePrice + poster.price) * PACKAGE_MARKUP) : 0;
+  const total = packageTotal(livePrice, poster?.price ?? null);
 
   useEffect(() => {
     const now = nowLocalInput();
@@ -187,6 +193,7 @@ export default function TaskConsole() {
           resolution: RESOLUTIONS[resIdx].label,
           attemptAt: new Date(attemptAt || Date.now()).toISOString(),
           sat: pickedSat ?? undefined,
+          posterSizeId: posterId ?? undefined,
         }),
       });
       const d = await res.json();
@@ -468,14 +475,64 @@ export default function TaskConsole() {
                 </span>
               )}
             </div>
-            <div className="row spread" style={{ marginBottom: 4 }}>
-              <span className="muted mono" style={{ fontSize: 12 }}>
-                {selectedTier.name} · {RESOLUTIONS[resIdx].label} {sensor}
-              </span>
-              <span className="price-total mono">${livePrice}.00</span>
+            {/* optional bundled poster */}
+            <div className="poster-add">
+              <div className="row spread" style={{ marginBottom: 8 }}>
+                <span className="label">🖼 Add a poster print?</span>
+                <span className="faint mono" style={{ fontSize: 9 }}>
+                  optional · by Gelato
+                </span>
+              </div>
+              <div className="poster-opts">
+                <button
+                  className={`popt ${!posterId ? "on" : ""}`}
+                  onClick={() => setPosterId(null)}
+                >
+                  <span className="po-label mono">None</span>
+                  <span className="po-price mono faint">—</span>
+                </button>
+                {POSTER_SIZES.map((p) => (
+                  <button
+                    key={p.id}
+                    className={`popt ${posterId === p.id ? "on" : ""}`}
+                    onClick={() => setPosterId(p.id)}
+                  >
+                    <span className="po-label mono">{p.label}</span>
+                    <span className="po-price mono">+${p.price}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-            <button className="btn" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={checkout} disabled={busy}>
-              {busy ? "Opening secure checkout…" : `◎ Task satellite · pay $${livePrice}`}
+
+            {/* cost summary */}
+            <div className="cost">
+              <div className="crow">
+                <span>Satellite capture</span>
+                <span className="tnum">${livePrice}.00</span>
+              </div>
+              {poster && (
+                <>
+                  <div className="crow">
+                    <span>{poster.label} poster</span>
+                    <span className="tnum">${poster.price}.00</span>
+                  </div>
+                  <div className="crow faint">
+                    <span>Package handling (+10%)</span>
+                    <span className="tnum">${markup}.00</span>
+                  </div>
+                </>
+              )}
+              <div className="crow total">
+                <span>Total</span>
+                <span className="price-total tnum">${total}.00</span>
+              </div>
+            </div>
+            <button className="btn" style={{ width: "100%", justifyContent: "center", marginTop: 10 }} onClick={checkout} disabled={busy}>
+              {busy
+                ? "Opening secure checkout…"
+                : poster
+                ? `◎ Task satellite + poster · pay $${total}`
+                : `◎ Task satellite · pay $${total}`}
             </button>
             {err && <div className="err mono">{err}</div>}
             <a
@@ -486,7 +543,9 @@ export default function TaskConsole() {
                 RESOLUTIONS[resIdx].label
               )}&attemptAt=${encodeURIComponent(
                 attemptAt ? new Date(attemptAt).toISOString() : ""
-              )}&sat=${encodeURIComponent(pickedSat ?? "")}&label=${encodeURIComponent(
+              )}&sat=${encodeURIComponent(
+                pickedSat ?? ""
+              )}&poster=${posterId ?? ""}&label=${encodeURIComponent(
                 label
               )}&target=${encodeURIComponent(target)}`}
             >
@@ -537,6 +596,18 @@ const css = `
 .tier-name{ font-family:var(--display); font-weight:600; font-size:15px; color:var(--ink); }
 .tier-price{ font-size:13px; font-weight:700; color:#a7bcff; white-space:nowrap; }
 .price-total{ font-size:22px; font-weight:700; color:var(--ink); letter-spacing:-.01em; }
+.poster-add{ margin:2px 0 14px; }
+.poster-opts{ display:grid; grid-template-columns:repeat(5,1fr); gap:5px; }
+.popt{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 3px; cursor:pointer;
+  background:var(--void); border:1px solid var(--line-2); border-radius:8px; color:var(--ink); transition:all .12s; }
+.popt:hover{ border-color:var(--muted); }
+.popt.on{ border-color:var(--cobalt); background:var(--cobalt-soft); }
+.po-label{ font-size:10px; font-weight:700; white-space:nowrap; }
+.po-price{ font-size:9.5px; color:#a7bcff; }
+.cost{ display:flex; flex-direction:column; gap:0; margin-bottom:2px; }
+.crow{ display:flex; justify-content:space-between; font-family:var(--mono); font-size:12px; color:var(--ink); padding:5px 0; }
+.crow.faint{ color:var(--muted); font-size:11px; }
+.crow.total{ border-top:1px solid var(--line); margin-top:3px; padding-top:9px; font-weight:700; align-items:baseline; }
 .tier-tag{ font-size:12px; margin-top:2px; line-height:1.4; }
 .err{ margin-top:10px; color:var(--red); font-size:11px; text-align:center; }
 .demo-link{ display:block; text-align:center; margin-top:12px; font-size:11px; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; transition:color .15s; }
