@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import GlobeClient from "../../components/GlobeClient";
 import { tier as getTier, partner as getPartner, TIERS } from "@/lib/catalog";
 import { esriImageUrl, fmtCoord } from "@/lib/geo";
+import { POSTER_SIZES, posterSize } from "@/lib/gelato";
 import type { Order } from "@/lib/orders";
 
 interface Stage {
@@ -35,6 +36,34 @@ export default function OrderClient({ id }: { id: string }) {
   const startRef = useRef<number | null>(null);
   const sp = useSearchParams();
   const isDemo = id === "demo";
+  const [posterSizeId, setPosterSizeId] = useState("16");
+  const [posterBusy, setPosterBusy] = useState(false);
+  const [posterErr, setPosterErr] = useState<string | null>(null);
+
+  async function orderPoster() {
+    if (!order) return;
+    setPosterBusy(true);
+    setPosterErr(null);
+    try {
+      const res = await fetch(`/api/poster/checkout?from=${order.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sizeId: posterSizeId,
+          lat: order.location.lat,
+          lng: order.location.lng,
+          label: order.label,
+          target: order.target,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.url) throw new Error(d.error || "Checkout failed.");
+      window.location.href = d.url;
+    } catch (e) {
+      setPosterErr((e as Error).message);
+      setPosterBusy(false);
+    }
+  }
 
   // demo pass: synthesize a paid order from query params, no Stripe, no charge
   useEffect(() => {
@@ -297,6 +326,46 @@ export default function OrderClient({ id }: { id: string }) {
               Task another
             </Link>
           </div>
+
+          {/* order a physical poster (Gelato print-on-demand) */}
+          <hr className="hair" />
+          <div style={{ padding: "12px 14px 14px" }}>
+            <div className="row spread" style={{ marginBottom: 10 }}>
+              <span className="label">🖼 Print it as a poster</span>
+              <span className="faint mono" style={{ fontSize: 9 }}>
+                by Gelato
+              </span>
+            </div>
+            <div className="poster-sizes">
+              {POSTER_SIZES.map((s) => (
+                <button
+                  key={s.id}
+                  className={`poster-size ${posterSizeId === s.id ? "on" : ""}`}
+                  onClick={() => setPosterSizeId(s.id)}
+                >
+                  <span className="ps-label mono">{s.label}</span>
+                  <span className="ps-dim mono faint">{s.dim}</span>
+                  <span className="ps-price mono">${s.price}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              className="btn"
+              style={{ width: "100%", justifyContent: "center", marginTop: 10 }}
+              onClick={orderPoster}
+              disabled={posterBusy || isDemo}
+            >
+              {isDemo
+                ? "Poster printing — live orders only"
+                : posterBusy
+                ? "Opening checkout…"
+                : `◈ Order ${posterSize(posterSizeId).label} poster · $${posterSize(posterSizeId).price}`}
+            </button>
+            {posterErr && <div className="err mono" style={{ fontSize: 11, marginTop: 8, color: "var(--red)", textAlign: "center" }}>{posterErr}</div>}
+            <div className="faint mono" style={{ fontSize: 9.5, marginTop: 8, textAlign: "center" }}>
+              Museum-grade matte · printed &amp; shipped worldwide
+            </div>
+          </div>
         </div>
       )}
 
@@ -355,9 +424,17 @@ const css = `
 @keyframes scan{ 0%{ transform:translateY(-40%);} 100%{ transform:translateY(250%);} }
 .op-image-foot{ position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between; padding:7px 10px; font-size:10px;
   background:linear-gradient(transparent, rgba(5,7,13,.85)); letter-spacing:.05em; }
+.poster-sizes{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.poster-size{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:9px 4px; cursor:pointer;
+  background:var(--void); border:1px solid var(--line-2); border-radius:9px; color:var(--ink); transition:all .12s; }
+.poster-size:hover{ border-color:var(--muted); }
+.poster-size.on{ border-color:var(--cobalt); background:var(--cobalt-soft); }
+.ps-label{ font-size:11px; font-weight:700; }
+.ps-dim{ font-size:8.5px; }
+.ps-price{ font-size:11px; color:#a7bcff; margin-top:2px; }
 @media (max-width:820px){
   .op-panel{ top:auto; bottom:12px; left:12px; right:12px; width:auto; max-height:42vh; overflow-y:auto; }
-  .op-deliver{ top:64px; left:12px; right:12px; width:auto; }
+  .op-deliver{ top:64px; left:12px; right:12px; width:auto; max-height:none; overflow-y:auto; }
   .op-log{ max-height:20vh; }
 }
 `;
