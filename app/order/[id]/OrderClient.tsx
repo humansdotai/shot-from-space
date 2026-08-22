@@ -353,11 +353,9 @@ export default function OrderClient({ id }: { id: string }) {
               className="btn"
               style={{ width: "100%", justifyContent: "center", marginTop: 10 }}
               onClick={orderPoster}
-              disabled={posterBusy || isDemo}
+              disabled={posterBusy}
             >
-              {isDemo
-                ? "Poster printing — live orders only"
-                : posterBusy
+              {posterBusy
                 ? "Opening checkout…"
                 : `◈ Order ${posterSize(posterSizeId).label} poster · $${posterSize(posterSizeId).price}`}
             </button>
