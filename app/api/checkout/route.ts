@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe, siteUrl } from "@/lib/stripe";
 import { tier, computePrice } from "@/lib/catalog";
 import { encodeMetadata, type OrderInput } from "@/lib/orders";
-import { POSTER_SIZES, PACKAGE_MARKUP } from "@/lib/gelato";
+import { POSTER_SIZES, PACKAGE_MARKUP, POSTER_SHIPPING } from "@/lib/gelato";
 
 export const runtime = "nodejs";
 
@@ -107,6 +107,22 @@ export async function POST(req: NextRequest) {
               allowed_countries: SHIP_COUNTRIES as unknown as any,
             },
             phone_number_collection: { enabled: true },
+            shipping_options: [
+              {
+                shipping_rate_data: {
+                  type: "fixed_amount",
+                  fixed_amount: {
+                    amount: POSTER_SHIPPING * 100,
+                    currency: t.currency,
+                  },
+                  display_name: "Worldwide tracked shipping",
+                  delivery_estimate: {
+                    minimum: { unit: "business_day", value: 5 },
+                    maximum: { unit: "business_day", value: 12 },
+                  },
+                },
+              },
+            ],
           }
         : {}),
       success_url: `${origin}/order/{CHECKOUT_SESSION_ID}`,

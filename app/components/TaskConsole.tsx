@@ -11,7 +11,12 @@ import {
   tierPrice,
 } from "@/lib/catalog";
 import { fmtCoord, type LatLng } from "@/lib/geo";
-import { POSTER_SIZES, packageTotal, PACKAGE_MARKUP } from "@/lib/gelato";
+import {
+  POSTER_SIZES,
+  packageTotal,
+  PACKAGE_MARKUP,
+  POSTER_SHIPPING,
+} from "@/lib/gelato";
 import LocatorMapClient from "./LocatorMapClient";
 
 // local datetime-local string for "now", rounded to the minute
@@ -75,7 +80,8 @@ export default function TaskConsole() {
   const livePrice = computePrice(tierId, sensor, RESOLUTIONS[resIdx].label);
   const poster = posterId ? POSTER_SIZES.find((p) => p.id === posterId)! : null;
   const markup = poster ? Math.round((livePrice + poster.price) * PACKAGE_MARKUP) : 0;
-  const total = packageTotal(livePrice, poster?.price ?? null);
+  const shipping = poster ? POSTER_SHIPPING : 0;
+  const total = packageTotal(livePrice, poster?.price ?? null) + shipping;
 
   useEffect(() => {
     const now = nowLocalInput();
@@ -519,6 +525,10 @@ export default function TaskConsole() {
                   <div className="crow faint">
                     <span>Package handling (+10%)</span>
                     <span className="tnum">${markup}.00</span>
+                  </div>
+                  <div className="crow faint">
+                    <span>Worldwide shipping</span>
+                    <span className="tnum">${shipping}.00</span>
                   </div>
                 </>
               )}

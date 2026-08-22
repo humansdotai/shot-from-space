@@ -9,6 +9,11 @@ const BASE = "https://order.gelatoapis.com/v4";
 // "package"): covers combined handling/packaging.
 export const PACKAGE_MARKUP = 0.1;
 
+// Flat worldwide shipping charged to the customer. Set to always cover Gelato's
+// own shipping fee, which (quoted live) runs ~$4.90 US ground to ~$10.75 for a
+// large poster shipped internationally.
+export const POSTER_SHIPPING = 12;
+
 /** Total for a satellite capture optionally bundled with a poster.
  *  When a poster is included the combined subtotal carries a 10% package markup. */
 export function packageTotal(satPrice: number, posterPrice: number | null): number {

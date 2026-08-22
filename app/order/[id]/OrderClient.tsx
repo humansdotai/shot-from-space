@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import GlobeClient from "../../components/GlobeClient";
 import { tier as getTier, partner as getPartner, TIERS } from "@/lib/catalog";
 import { esriImageUrl, fmtCoord } from "@/lib/geo";
-import { POSTER_SIZES, posterSize } from "@/lib/gelato";
+import { POSTER_SIZES, posterSize, POSTER_SHIPPING } from "@/lib/gelato";
 import type { Order } from "@/lib/orders";
 
 interface Stage {
@@ -387,11 +387,11 @@ export default function OrderClient({ id }: { id: string }) {
             >
               {posterBusy
                 ? "Opening checkout…"
-                : `◈ Order ${posterSize(posterSizeId).label} poster · $${posterSize(posterSizeId).price}`}
+                : `◈ Order ${posterSize(posterSizeId).label} · $${posterSize(posterSizeId).price} + $${POSTER_SHIPPING} ship`}
             </button>
             {posterErr && <div className="err mono" style={{ fontSize: 11, marginTop: 8, color: "var(--red)", textAlign: "center" }}>{posterErr}</div>}
             <div className="faint mono" style={{ fontSize: 9.5, marginTop: 8, textAlign: "center" }}>
-              Museum-grade matte · printed &amp; shipped worldwide
+              Museum-grade matte · ${POSTER_SHIPPING} worldwide tracked shipping
             </div>
           </div>
           )}

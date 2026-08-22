@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, siteUrl } from "@/lib/stripe";
-import { posterSize } from "@/lib/gelato";
+import { posterSize, POSTER_SHIPPING } from "@/lib/gelato";
 
 export const runtime = "nodejs";
 
@@ -48,6 +48,19 @@ export async function POST(req: NextRequest) {
         allowed_countries: COUNTRIES as unknown as any,
       },
       phone_number_collection: { enabled: true },
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            type: "fixed_amount",
+            fixed_amount: { amount: POSTER_SHIPPING * 100, currency: "usd" },
+            display_name: "Worldwide tracked shipping",
+            delivery_estimate: {
+              minimum: { unit: "business_day", value: 5 },
+              maximum: { unit: "business_day", value: 12 },
+            },
+          },
+        },
+      ],
       metadata: {
         app: "sfs-poster",
         sizeId: size.id,
