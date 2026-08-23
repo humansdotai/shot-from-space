@@ -1,0 +1,14 @@
+# Never upload: local secrets, the local database, build output, QA captures.
+.env
+.env.local
+.env.*.local
+prisma/dev.db
+prisma/dev.db-journal
+.next
+.next-build
+node_modules
+reference/build
+reference/diffs
+tests
+test-results
+playwright-report
