@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SHOT FROM SPACE
 
-## Getting Started
+A photograph of your home, taken from orbit on request, delivered as a framed
+print. Every order is a **mission** with a code — `MISSION / 32BF`.
 
-First, run the development server:
+This repository is the complete product: landing, mission archive, purchase
+flow, Mission Control, comms, account, transactional email, and the poster
+composer that turns a satellite frame into the printed object.
+
+---
+
+## Run it
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+That is the whole setup. **No API keys are required.** The app boots in
+`MOCK_MODE`, creates a local SQLite database, seeds four demo missions in
+different stages, and runs every external service — Stripe, SkyFi, Gelato,
+ElevenLabs, email, geocoding — against deterministic mock adapters with
+realistic latency. A thin amber strip in the footer shows mock mode is active.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Walk the demo
 
-## Learn More
+| Screen | Path |
+|---|---|
+| Landing | `/` |
+| Process | `/how-it-works` |
+| Mission archive | `/missions` |
+| Example dossier | `/missions/[code]` |
+| Purchase (one page) | `/start` |
+| Mission Control | `/m/32BF` — final deliverable approaching |
+| | `/m/74KL` — image acquired, preview released |
+| | `/m/18QD` — capture window, re-tasked for cloud |
+| | `/m/55RA` — delivered, file closed |
+| Shared read-only view | share control on any mission page |
+| Account | `/account` (sign in as `operator@shotfromspace.com`) |
+| Design system | `/system` |
 
-To learn more about Next.js, take a look at the following resources:
+Sign-in is passwordless. Request a link at `/auth/sign-in`; in mock mode the
+link is printed to the server console and rendered on the page.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Inside Mission Control, the amber `ADVANCE MISSION` control walks a mission
+through every stage of the state machine. It exists only while `MOCK_MODE` is
+true.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+```bash
+npm run dev        # db push + seed, then next dev
+npm run build      # production build
+npm run typecheck  # tsc --noEmit
+npm run lint       # eslint
+npm run db:reset   # drop and rebuild the demo database
+npm run db:studio  # inspect the database
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/            routes (App Router)
+  api/          REST endpoints — missions, orders, checkout, comms, auth, poster, webhooks
+  m/[code]/     Mission Control
+  s/[code]/     read-only shared mission view
+  start/        purchase
+  missions/     archive + dossiers
+  account/      orders, receipts
+  system/       design system reference
+components/
+  fui/          the entire visual vocabulary — everything else composes these
+  site/         header, footer, shell
+  landing/ discovery/ purchase/ mission/ comms/ account/
+lib/
+  types.ts      domain model + mission state machine
+  missions/     state machine, transitions, DTOs
+  integrations/ Stripe · SkyFi · Gelato · ElevenLabs · email · geocode · LLM
+  poster/       server-side poster composer
+  imagery.ts    public-domain NASA/USGS frame catalogue
+prisma/         schema + idempotent seed
+reference/      structural analysis notes
+```
+
+## Documents
+
+| File | What it is |
+|---|---|
+| `INTEGRATIONS.md` | Every service: what to provide, where to get it, where to paste it, what flips to live |
+| `PIPELINE.md` | The real capture → composition → print pipeline and where each stub plugs in |
+| `DECISIONS.md` | Judgement calls made during the build and why |
+| `REVIEW.md` | What exists, what is mocked, what needs keys, known gaps |
+| `CONTRACT.md` | The build contract — brand rules, ownership, shared interfaces |
+| `IMAGERY.md` | Attribution for every example frame |
+
+## Stack
+
+Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Prisma 6 +
+SQLite · sharp. Deployable to Vercel; see `REVIEW.md` for the one change
+required (SQLite → Postgres).

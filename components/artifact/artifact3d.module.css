@@ -1,0 +1,268 @@
+/* ==================================================================
+   ARTIFACT 3D — the patch and the coin as physical objects.
+
+   Everything geometric in here is expressed in `cqw` — 1% of the
+   square frame's inline size, S. That is the whole trick: the client's
+   shadow specification is a ratio, not a pixel value, so writing it as
+   a ratio makes it exact at every render size with no measurement,
+   no ResizeObserver and no re-layout on resize.
+
+   ------------------------------------------------------------------
+   THE SHADOW SPECIFICATION
+   ------------------------------------------------------------------
+   Client value, given for an 863 x 860 element:
+       X 0 · Y 57 · blur 15 · spread 0
+
+   As ratios of S:
+       Y     = 57 / 863 = 6.605 %  ->  translateY( 6.6cqw )
+       blur  = 15 / 863 = 1.738 %  ->  a box-shadow blur RADIUS
+
+   The shadow is not a `box-shadow`: these objects are discs on a
+   transparent ground, so a rectangular shadow would be a lie. It is a
+   second copy of the artwork, flattened to black and blurred, which
+   gives a shape-accurate cast. That means the blur has to be converted:
+   a CSS *filter* blur takes a standard deviation, while a box-shadow
+   blur takes a radius equal to 2 x the deviation. So
+
+       filter blur = 1.738 % / 2 = 0.869 %  ->  blur( 0.87cqw )
+
+   which reproduces the specified 15px softness exactly at S = 863px
+   (0.869 % x 863 = 7.5px deviation = 15px box-shadow blur), and holds
+   at any other size.
+   ================================================================== */
+
+/* Registering the three animated channels as <number> keeps them typed,
+   skips a re-parse per frame, and lets the reduced-motion override below
+   win over the inline values the rAF loop writes. Custom property names
+   are never scoped by CSS Modules, so these are deliberately global. */
+@property --a3d-nx {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --a3d-ny {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --a3d-lift {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.root {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+/* The square. `container-type: inline-size` makes S queryable by every
+   descendant; the element itself never reads its own cqw. */
+.frame {
+  position: relative;
+  container-type: inline-size;
+  width: var(--a3d-size, 100%);
+  max-width: 100%;
+  aspect-ratio: 1;
+  /* No border, no plate, no fill. The object sits on the page ground. */
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  /* 2.2 x S. Shallow enough that a 14 degrees tilt shows real
+     foreshortening, deep enough that it never fisheyes. */
+  perspective: 220cqw;
+  perspective-origin: 50% 50%;
+}
+
+/* ------------------------------------------------------------------
+   SHADOW
+   Two nested elements on purpose: the outer one is transformed every
+   frame, the inner one carries the blur. Keeping the filter off the
+   animated element lets the browser rasterise the blur once and then
+   move it on the compositor, instead of re-running a Gaussian each
+   frame.
+   ------------------------------------------------------------------ */
+.frame {
+  /*
+     Specular multiplier. 0 by default because the artifacts are
+     embroidered textile — thread scatters light, it does not reflect a
+     highlight, and a travelling white gradient over floss reads as
+     laminated plastic. Only genuinely specular materials opt in.
+  */
+  --a3d-spec: 0;
+
+  /* Contact cast: object resting on the surface it sits on. */
+  --a3d-sh-y: 6.6cqw;
+  --a3d-sh-rise: 4cqw;
+  --a3d-sh-blur: 2.6cqw;
+  --a3d-sh-open: 1.6cqw;
+  --a3d-sh-op: 0.42;
+}
+
+/*
+   Wall cast: the object is mounted proud of a white wall, lit from above
+   and in front. The shadow therefore sits further down, spreads much
+   wider and is far lighter than a contact shadow — a wall shadow is
+   mostly penumbra. Same geometry, different light.
+*/
+.wall {
+  --a3d-sh-y: 5.2cqw;
+  --a3d-sh-rise: 3cqw;
+  --a3d-sh-blur: 2.2cqw;
+  --a3d-sh-open: 1.1cqw;
+  --a3d-sh-op: 0.5;
+}
+
+/* Struck metal: a raised, polished relief genuinely does travel a
+   highlight as it turns. */
+.gloss {
+  --a3d-spec: 1;
+}
+
+.shadowWrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  transform:
+    translate3d(
+      calc(var(--a3d-nx) * -2.4cqw),
+      calc(var(--a3d-sh-y) + var(--a3d-ny) * -3.4cqw + var(--a3d-lift) * var(--a3d-sh-rise)),
+      0
+    )
+    scale(calc(1 + var(--a3d-lift) * 0.11));
+  /* Lifting spreads the shadow and lightens it, which is what selling
+     the height actually depends on. */
+  opacity: calc(var(--a3d-sh-op) - var(--a3d-lift) * 0.06);
+}
+
+.shadow {
+  position: absolute;
+  inset: 0;
+  /* brightness(0) keeps the alpha and drops the colour: a neutral cast,
+     never a tinted one and never a glow. */
+  /*
+     The supplied spec (Y 57 / blur 15) was authored against an 863px
+     canvas. Held as a pure ratio it scales to a ~2.3px deviation at the
+     265px these render at on the page — a hard-edged dark crescent that
+     hides behind the disc and reads as no shadow at all, which is what
+     it did. The Y offset stays on the spec ratio because that is the
+     height cue; the blur is opened up so the cast actually reads as a
+     shadow at the size a browser paints it, and softens further as the
+     object lifts.
+  */
+  filter: brightness(0) blur(calc(var(--a3d-sh-blur) + var(--a3d-lift) * var(--a3d-sh-open)));
+}
+
+/* ------------------------------------------------------------------
+   OBJECT
+   translateZ first so the lift happens along the viewer's axis, then
+   the two rotations about the lifted centre.
+   ------------------------------------------------------------------ */
+.object {
+  position: absolute;
+  inset: 0;
+  transform:
+    translateZ(calc(var(--a3d-lift) * 3.25cqw))
+    rotateX(calc(var(--a3d-ny) * var(--a3d-tilt, 14deg) * -1))
+    rotateY(calc(var(--a3d-nx) * var(--a3d-tilt, 14deg)));
+}
+
+/* 3.25cqw at a 220cqw perspective resolves to a 1.5 % apparent scale --
+   the lift is real depth, not a fake scale, so the shadow parallax and
+   the growth agree with each other. */
+
+.art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scale(var(--a3d-art, 1));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ------------------------------------------------------------------
+   SPECULAR
+   A fixed radial gradient on an oversized layer that is translated --
+   never a re-declared background-position, which would repaint every
+   frame. Masked by the artwork's own alpha so it can only ever fall on
+   the object, and kept low enough that it reads as sheen on bronze
+   rather than a wash over the artwork.
+   ------------------------------------------------------------------ */
+.spec {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: scale(var(--a3d-art, 1));
+  /* No blend mode: for a pure-white source, `screen` and ordinary
+     source-over compositing are algebraically identical, and skipping the
+     blend keeps the object a plain composited layer rather than a blend
+     group -- which is the difference between a compositor update and a
+     repaint on every frame of the tilt. */
+  opacity: calc(var(--a3d-lift) * 0.85 * var(--a3d-spec));
+  -webkit-mask-image: var(--a3d-mask);
+  mask-image: var(--a3d-mask);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.specGlow {
+  position: absolute;
+  left: -50%;
+  top: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgb(255 255 255 / 0.28) 0%,
+    rgb(255 255 255 / 0.11) 20%,
+    rgb(255 255 255 / 0) 44%
+  );
+  /* 13 % of a 200 % layer = 26 % of the frame at full deflection. */
+  transform: translate3d(calc(var(--a3d-nx) * 13%), calc(var(--a3d-ny) * 13%), 0);
+}
+
+/* will-change is added by the rAF loop while a gesture is running and
+   removed the frame it settles, so an idle page holds no extra layers. */
+.active .shadowWrap,
+.active .object,
+.active .spec {
+  will-change: transform, opacity;
+}
+
+.caption {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+/* ------------------------------------------------------------------
+   REDUCED MOTION
+   The JS never attaches a listener in this mode; this is the second
+   lock. `!important` is what lets a stylesheet rule beat the inline
+   values the loop would otherwise have left behind if the preference
+   is switched on mid-session.
+   ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .stage {
+    --a3d-nx: 0 !important;
+    --a3d-ny: 0 !important;
+    --a3d-lift: 0 !important;
+  }
+
+  .spec {
+    display: none;
+  }
+}

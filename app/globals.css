@@ -1,26 +1,3091 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ==================================================================
+   SHOT FROM SPACE — design tokens
+   Owned by the design system (Agent 1). Every other surface consumes
+   these names; do not hard-code hex values outside this file.
+
+   Token names are a public API: nine screens import them as Tailwind
+   utilities. Names are never renamed or removed — only added to.
+   The binding list lives in BRIEF-V2.md § TOKEN CONTRACT.
+   ================================================================== */
+
+@theme {
+  /* --- Breakpoints ------------------------------------------------
+     FIVE DELIBERATE STEPS: 768 / 1280 / 1440 / 1920 / 2400, on top of
+     390 as the base composition. The site used to be designed at 390
+     and 1440 and left to stretch; every value in the STEPPED SYSTEM
+     block further down is now re-stated at each of these widths.
+
+     Names are additive and nothing is removed — `sm` and `lg` keep
+     their meanings for the sub-steps that already use them:
+
+       (base)  390   phone. One column, mobile index behind a button.
+       sm      640   two-up grids inside the column.
+       md      768   STEP 2 — tablet. Full nav appears, 12-col grid
+                     starts carrying real spans.
+       lg     1024   sub-step: three-up grids, sidebar layouts.
+       xl     1280   STEP 3 — laptop. Type steps up, gaps open.
+       2xl    1440   STEP 4 — the column reaches its 1376px maximum
+                     and stops growing. Retuned from Tailwind's 1536
+                     default so the variant lands on a real step of
+                     THIS system; the class name is unchanged.
+       xl2    1920   STEP 5 — full-bleed sections take over the extra
+                     width; the reading column does not.
+       xl3    2400   STEP 6 — same again, wider.
+     ---------------------------------------------------------------- */
+  --breakpoint-sm: 40rem;    /* 640  */
+  --breakpoint-md: 48rem;    /* 768  */
+  --breakpoint-lg: 64rem;    /* 1024 */
+  --breakpoint-xl: 80rem;    /* 1280 */
+  --breakpoint-2xl: 90rem;   /* 1440 */
+  --breakpoint-xl2: 120rem;  /* 1920 */
+  --breakpoint-xl3: 150rem;  /* 2400 */
+
+  /* --- Dark ground ---------------------------------------------- */
+  --color-void: #08090b;        /* page background */
+  --color-deck: #0d0f13;        /* raised panel */
+  --color-deck-2: #14171c;      /* inset / hover */
+  /* HAIRLINES — stated as alpha over the ground, not as a hex.
+     SPEC-V4 §A5 sets the rule at `rgba(255,255,255,0.2)` on dark and
+     the equivalent alpha on paper. Two things follow from writing it
+     as alpha rather than as the composited hex it used to be:
+
+       1. one value is correct on all three dark grounds. A #23262c
+          rule drawn on `deck-2` was a 1.10:1 edge — visible on void,
+          gone on the panel it was supposed to bound. Alpha composites
+          against whatever it is actually sitting on, so the rule has
+          the same WEIGHT everywhere instead of the same colour.
+       2. dark and paper are the same rule inverted. 0.20 white on
+          void and 0.20 void on paper both land at 1.66:1, so a light
+          band reads as the same system flipped rather than as a
+          second, softer one.
+
+     The old values were ~0.10 / ~0.06 / ~0.18 alpha equivalents: at
+     1.36:1 the default rule was close to invisible, which is why so
+     many surfaces had reached for a fill or a shadow to bound
+     themselves. A hairline that can be seen is what makes shadows
+     unnecessary (see § Elevation). */
+  --color-hairline: rgba(255, 255, 255, 0.20);        /* 1px rules, frame borders */
+  --color-hairline-soft: rgba(255, 255, 255, 0.10);   /* the quiet division */
+  --color-hairline-strong: rgba(255, 255, 255, 0.32); /* emphasised / hover */
+
+  /* Ink on the dark ground.
+
+     Measured against the three dark grounds this ink is ever set on —
+     void #08090b, deck #0d0f13, deck-2 #14171c:
+       paper       #eeede8  →  16.99 / 16.36 / 15.32 : 1
+       paper-dim   #9aa0a6  →   7.54 /  7.26 /  6.80 : 1
+       paper-faint #7b8189  →   5.07 /  4.88 /  4.57 : 1
+     All three clear AA on all three grounds. `paper-faint` used to be
+     #5f656c — the same value as `void-faint`, which was measured only
+     against PAPER (5.03:1, fine) and then reused on the dark ground
+     without being re-measured, where it lands at 3.38:1 on void and
+     3.05:1 on deck-2. That fails AA for body-size text, and it is the
+     value carrying `.tele-s` / `.tele-xs`, i.e. most of the telemetry
+     layer. #7b8189 is the nearest value in the same cool grey family
+     that clears 4.5:1 on all three. The light ground keeps #5f656c
+     under its own name (`--color-void-faint`), where it is correct. */
+  --color-paper: #eeede8;       /* primary text */
+  --color-paper-dim: #9aa0a6;   /* secondary text, labels */
+  --color-paper-faint: #7b8189; /* tertiary, disabled, rule text */
+
+  /* --- Light ground ---------------------------------------------
+     The poster is dark on top and paper-white below; the site does the
+     same. `paper` therefore has to work as a BACKGROUND, which means
+     ink values that clear WCAG AA against it.
+
+     Measured against #eeede8 (relative luminance 0.8457):
+       void        #08090b  →  16.99 : 1   body ink
+       void-dim    #4a4f56  →   7.04 : 1   secondary ink  (AA + AAA)
+       void-faint  #5f656c  →   5.03 : 1   tertiary ink   (AA)
+       signal      #ff4d1c  →   2.83 : 1   FAILS — never on paper
+       signal-ink  #c2350f  →   4.70 : 1   the accent for light ground
+     The dims keep the cool cast of the void family so a light band
+     reads as the same system inverted, not as a second palette.
+     ---------------------------------------------------------------- */
+  --color-void-dim: #4a4f56;
+  --color-void-faint: #5f656c;
+  /* The same two alphas, inverted. Void rather than pure black so the
+     rule keeps the cool cast of the family it belongs to. */
+  --color-hairline-ink: rgba(8, 9, 11, 0.20);        /* 1px rule on paper */
+  --color-hairline-ink-strong: rgba(8, 9, 11, 0.32); /* emphasised rule on paper */
+
+  /* ------------------------------------------------------------------
+     THE ACCENT — a STATE colour, and only a state colour (§A5)
+     ------------------------------------------------------------------
+     One hue in the entire product, and it means exactly one thing:
+     THIS IS HAPPENING NOW, OR THIS IS WHERE YOU ARE. Its whole value
+     is scarcity — the eye finds it because there is nothing else on
+     the page competing for that job.
+
+     ALLOWED
+       · `::selection`
+       · `:focus-visible` (via `--focus-ring`)
+       · live / active / acquiring status — <StatusChip state="active">,
+         the orbit marker, the pass readout
+       · error and refusal states (`.fui-error`)
+       · the current or selected item in a set
+       · a hover state that resolves back to rest
+
+     NOT ALLOWED
+       · a button FILL at rest. A primary button is ink on ground; it
+         is the most important thing on the page because of its size,
+         position and contrast, not because it is orange.
+       · a HEADING colour, at any level, including eyebrows, section
+         indices and standfirsts.
+       · a BADGE, chip, pill, tag, rule or numeral tinted for emphasis
+         rather than to say something is live.
+
+     The test for a proposed use is one question: WOULD THIS COLOUR
+     CHANGE IF THE SYSTEM'S STATE CHANGED? If the answer is no, it is
+     decoration, and it spends the accent's scarcity on nothing.
+     ------------------------------------------------------------------ */
+  --color-signal: #ff4d1c;      /* status / live / active — dark ground only */
+  --color-signal-dim: #8c2c11;
+  --color-signal-faint: #3a1409;
+  --color-signal-ink: #c2350f;  /* the same accent, legible on paper */
+
+  /* --- Typography ----------------------------------------------- */
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* ------------------------------------------------------------------
+     TYPE SCALE — the base (390) step
+     ------------------------------------------------------------------
+     Eight roles, all of them unchanged names: hero, display, heading,
+     body, prose, label, action, tele/tele-s/tele-xs.
+
+     These used to `clamp()` between a 390 and a 1440 solution, which
+     means every width in between was an accident of linear
+     interpolation and every width above 1440 was frozen. They are now
+     RE-STATED at each of the five steps in the STEPPED SYSTEM block
+     below. The values here are the 390 composition.
+
+     Two rules survive intact: display weight stays 400 with negative
+     tracking (weight 400 at 72px reads as confidence, weight 700 at
+     40px reads as a template), and labels stay uppercase +0.04em at
+     weight 500.
+
+     ------------------------------------------------------------------
+     THE TRACKING SIGN FLIP (SPEC-V4 §A2) — the typographic signature
+     ------------------------------------------------------------------
+     Every role in this file carries a letter-spacing with a SIGN, and
+     the sign is decided by one question: is the string read as
+     LANGUAGE, or scanned as a MARKER?
+
+       language   hero, display, heading, body, prose, action,
+                  mission-title            →  NEGATIVE
+       marker     label, tele/-s/-xs, file-label, file tags, status
+                  chips                    →  POSITIVE
+
+     Language wants its words to hold together as shapes, and default
+     tracking at display sizes is loose — so it tightens, and tightens
+     FURTHER as the size grows (hero runs -0.02 at 40px to -0.03 at
+     72px; the optical looseness scales with the type). Markers are
+     read letter by letter, usually uppercase, usually short, usually
+     at 9–15px where the counters are already closing up — so they
+     open out.
+
+     Tight display against spaced-out labels is the whole signature.
+     Set both at zero and the page reads as a template; set them the
+     same sign and it reads as one undifferentiated block of type.
+
+     ON THE ~+0.03rem IN §A2: `--text-label` is 12px at +0.04em, which
+     IS 0.48px = 0.03rem at a 16px root. The em form is kept because
+     it holds the ratio as the label steps 12 → 15 across the six
+     widths, where a fixed rem would go relatively tighter each step.
+
+     THE RULE THIS DOES NOT WRITE DOWN, AND SHOULD:
+     **A LABEL STYLE IS NEVER A SENTENCE.** `uppercase` + positive
+     tracking is a marker treatment; applied to running prose it costs
+     ~12% reading speed (word-shape recognition is gone — every word
+     is a rectangle) and it reads as shouting. If a string has a verb
+     and more than about four words, it is language: set it in `body`
+     or `prose` with the negative tracking, sentence case, whatever
+     size the block needs. `tele` is for `LAT 51.5074° N`, not for
+     "WE WILL RE-TASK THE SATELLITE AT NO COST TO YOU."
+     ------------------------------------------------------------------
+
+     Headlines are CAPPED. Hero runs 40 → 72 across a viewport range
+     that runs 390 → 2400: the viewport grows 6.2x, the headline grows
+     1.8x. A headline that tracked the viewport would be a poster, not
+     a page.
+     ------------------------------------------------------------------ */
+
+  /* Hero — one per page, the opening line.
+     40 / 48 / 56 / 60 / 68 / 72. Line-height 1: at this size the
+     leading is the composition. */
+  --text-hero: 2.5rem;                                             /* 40 */
+  --text-hero--line-height: 1;
+  --text-hero--letter-spacing: -0.02em;
+  --text-hero--font-weight: 400;
+
+  /* Display — the band headline, one step under the hero.
+     28 / 32 / 36 / 40 / 44 / 46. */
+  --text-display: 1.75rem;                                         /* 28 */
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 400;
+
+  /* Heading — subsection and card headline.
+     20 / 22 / 24 / 26 / 28 / 29. */
+  --text-heading: 1.25rem;                                         /* 20 */
+  --text-heading--line-height: 1.15;
+  --text-heading--letter-spacing: -0.015em;
+  --text-heading--font-weight: 400;
+
+  /* Body — UI copy and short runs. 16 / 16 / 16 / 16 / 17 / 18. Flat
+     to 1440 because 16px is the reading size; the two steps above it
+     are viewing-distance corrections, not a bigger design. */
+  --text-body: 1rem;                                               /* 16 */
+  --text-body--line-height: 1.5;
+  --text-body--letter-spacing: -0.005em;
+
+  /* Body long-form — multi-paragraph runs, opened up.
+     16 / 17 / 17 / 18 / 19 / 20, and the leading opens with it.
+     Always pair with a `measure` cap: the size grows, the LINE does
+     not. A 2400px-wide paragraph is a failure, not a feature. */
+  --text-prose: 1rem;                                              /* 16 */
+  --text-prose--line-height: 1.6;
+  --text-prose--letter-spacing: -0.005em;
+
+  /* ------------------------------------------------------------------
+     NOTE — small SENTENCE-CASE prose. 13 / 13 / 13 / 14 / 15 / 16.
+     ------------------------------------------------------------------
+     Added because its absence was causing a specific, repeatable bug.
+
+     The scale had exactly one role under `body`: `label`, which is
+     uppercase and positively tracked. So every time a screen needed
+     copy that was SMALLER than body but still a sentence — a caption,
+     a footnote, a legal line, a disclaimer, a standfirst under a
+     plate — the only thing to reach for was `label` or `tele`, and a
+     dozen paragraphs of running prose ended up uppercased and tracked
+     out at 10 and 11px. An audit found 42-word paragraphs, three-
+     sentence disclaimers and two-clause captions set that way.
+
+     That is not an authoring mistake so much as a missing role: if
+     the only small type in a system is a marker treatment, small
+     prose will be set as a marker. `note` is the role that was
+     missing.
+
+     It is the BODY family, not the label family — sans face, sentence
+     case, NEGATIVE tracking (§A2), leading opened to 1.55 because a
+     small line needs proportionally more air, not less. Reach for it
+     whenever the string is language and body would be too loud. It is
+     never uppercased.
+
+     The floor is 13px and it is a floor on purpose: WCAG sets no
+     minimum size, so the ramp passes on ink contrast alone, and every
+     ink in this palette clears 4.5:1 on every ground — but 13 is
+     where sentence-case sans stops being comfortable and starts being
+     small print, and small print is what this role is for. Below it,
+     use `tele` — and if you are about to, check that what you have is
+     actually a label. */
+  --text-note: 0.8125rem;                                          /* 13 */
+  --text-note--line-height: 1.55;
+  --text-note--letter-spacing: -0.005em;
+
+  /* Label — uppercase micro-type. Callers add `uppercase`; a Tailwind
+     font-size token cannot carry text-transform.
+     12 / 12 / 13 / 13 / 14 / 15. */
+  --text-label: 0.75rem;                                           /* 12 */
+  --text-label--line-height: 1.1;
+  --text-label--letter-spacing: 0.04em;
+  --text-label--font-weight: 500;
+
+  /* Action — buttons, nav, anything that acts. 16 to 1440, then 17/18.
+     A control never gets SMALLER because the window did.
+
+     Tracking was 0 and is now -0.005em, matching `body`. §A2's split
+     is language vs marker, and a control label is sentence-case
+     language — "Start a mission", not "START A MISSION". Being the
+     only sentence-case role in the file sitting at exactly zero was
+     an omission rather than a decision. At 16px it is 0.08px, so
+     nothing reflows; it is the SIGN that has to be right, because the
+     nav sits directly beside `text-label` in the header and the two
+     are supposed to pull in opposite directions. */
+  --text-action: 1rem;                                             /* 16 */
+  --text-action--line-height: 1.25;
+  --text-action--letter-spacing: -0.005em;
+  --text-action--font-weight: 500;
+
+  /* --- Telemetry (monospace, SFS's own FUI layer) ----------------
+     11 / 10 / 9 at rest, each stepping once at 1920 and once at 2400.
+     Micro-type is the first thing that disappears on a large display
+     seen from a normal distance, so it is the one thing that has to
+     grow there. */
+  --text-tele: 0.6875rem;                                          /* 11 */
+  --text-tele--line-height: 1.4;
+  --text-tele--letter-spacing: 0.14em;
+  --text-tele-s: 0.625rem;                                         /* 10 */
+  --text-tele-s--line-height: 1.4;
+  --text-tele-s--letter-spacing: 0.16em;
+  --text-tele-xs: 0.5625rem;                                       /* 9 */
+  --text-tele-xs--line-height: 1.4;
+  --text-tele-xs--letter-spacing: 0.2em;
+
+  /* ------------------------------------------------------------------
+     THE SPACING UNIT — pinned to px, deliberately
+     ------------------------------------------------------------------
+     Tailwind's whole spacing scale is `calc(var(--spacing) * n)`, and
+     its default is `0.25rem`. That makes EVERY `p-*`, `gap-*`, `h-*`,
+     `w-*`, `min-h-*`, `space-*`, `inset-*` and `translate-*` in the
+     product a function of the root font size.
+
+     It is 4px here instead, which resolves to exactly the same pixels
+     it always did — and makes the scale immune to the root.
+
+     THIS IS THE TAP-TARGET GUARANTEE. `min-h-11` is used on ~25
+     controls across the site; at `0.25rem` it is 2.75rem, which is
+     44px only while the root is 16. Under the fluid-root ladder in
+     SPEC-V4 §A1 the root drops to 14px below 1280 and `min-h-11`
+     silently becomes 38.5px — i.e. every touch target on every phone
+     and tablet width fails WCAG 2.5.8 / the 44px platform minimum, in
+     files the design system does not own and cannot audit one by one.
+
+     Pinning the unit fixes that once, at the system level, for every
+     consumer. 44 is 44 CSS px at 390 and at 2400. See the
+     ROOT FONT SIZE block in @layer base for why the ladder itself is
+     not adopted.
+     ------------------------------------------------------------------ */
+  --spacing: 4px;
+
+  /* --- Radius ---------------------------------------------------
+     SPEC-V4 §A5: 2px everywhere in the layout system — essentially
+     square. A 12px surface radius is a product-UI tell; this is a
+     record, and a record has corners.
+
+     `--radius-action` is the CONTROL exception (with the 3D artifacts
+     and the framed poster). A button is an object you press and its
+     radius is part of that idiom; a panel is a sheet of paper and it
+     is not.
+
+     Anything that is a SURFACE — a card, a plate, a panel, a row
+     highlight — takes `--radius-card`. */
+  /* 3px, measured off the reference's `.button` / `.link-block` /
+     `.solar-panel` — every control and control-shaped object on that
+     site is 3px, and at 44px tall the difference between 3 and 6 is
+     the difference between a machined edge and a web widget. It was
+     6px here. It is the one token in this file the control layer
+     owns outright, and buttons, fields and selects all read it, so
+     they stay one family. */
+  --radius-action: 3px;   /* controls only — the §A5 exception */
+  --radius-card: 2px;     /* every surface in the layout system */
+
+  /* THE PILL EXCEPTION — a stadium, not a rounded rectangle.
+     ------------------------------------------------------------------
+     999px is deliberately larger than any element that uses it, so the
+     ends resolve to true semicircles at any height and the shape stops
+     being a "radius" at all: it is an OBJECT — a stamped label, the
+     one thing in this system that is affixed to the page rather than
+     printed on it. That is why it is allowed to break §A5, and it only
+     works while it stays rare.
+
+     MAY USE IT — and nothing else:
+       · <StatusChip> / <StatusToken>  components/fui/StatusChip.tsx
+       · <Chip>                        components/mission/ui.tsx
+       · <MetaPill>                    components/fui/MetaPill.tsx
+     i.e. status tokens, and the mission file's meta strip (READOUT D1).
+
+     MUST NOT USE IT: cards, plates, panels, wells, image frames, rows,
+     tables, inputs, selects, buttons, links, tabs, dialogs, tooltips.
+     A surface takes `--radius-card`; a control takes `--radius-action`.
+     If a new component wants a pill, the answer is no unless it is a
+     status token — a pill on a surface reads as a web-app widget and
+     undoes the record idiom the other 2px are buying. */
+  --radius-pill: 999px;   /* status tokens + the meta strip ONLY */
+
+  /* THE CARD-OBJECT EXCEPTION — a die-cut corner, not a rounded panel.
+     ------------------------------------------------------------------
+     BRIEF-DECK.md §E makes rounded corners a deliberate second break
+     from §A5, and it is granted on exactly the same terms as the pill
+     above: it is allowed because the thing it shapes is an OBJECT, and
+     it only stays allowed while it stays rare.
+
+     The mission brief is not a panel of the page. It is a stack of
+     white cards on a black ground that you flick through with a
+     thumb — a physical deck, held rather than printed. 16px on a
+     360-700px card is 2.3-4.4% of the card's width, which is the same
+     ratio as the ~3mm corner on an 85mm playing card. That ratio is
+     the whole justification: at card scale it reads as a cut edge, and
+     a cut edge is what says "object". Applied to a page surface the
+     identical value reads as a product-UI panel, which is precisely
+     what §A5 exists to keep out — so the value is not the exception,
+     the SCALE IT IS USED AT is, and that is why it is scoped by
+     component below rather than offered as a size.
+
+     There is a second reason it cannot spread. These cards carry no
+     border by design: paper on void, separated by fill and shadow
+     only (§E). A radius on a bordered surface draws a curved line and
+     is loud; a radius on a borderless fill only shapes silhouette. The
+     token is safe here BECAUSE there is no hairline on it, which is
+     not true of any plate, well or frame in the layout system.
+
+     MAY USE IT — and nothing else:
+       · <BriefDeck>       components/brief/BriefDeck.tsx
+                           (the deck's cards and nothing else in it —
+                            not its header, footer, controls or ground)
+       · the brief entry card on /m/[code] — the video plate that
+         opens the deck. It is the deck's door and carries the same
+         silhouette so the deck reads as the card enlarging.
+
+     MUST NOT USE IT: plates, image frames, inputs, selects, textareas,
+     tables, rows, wells, bands, panels, dialogs, tooltips, popovers,
+     the media/hover cards, or any surface inside a brief card. A
+     surface takes `--radius-card`; a control takes `--radius-action`;
+     a status token takes `--radius-pill`. If a new component wants
+     this one, the answer is no unless it is literally a card in a
+     deck you can flick — and there is only one of those.
+
+     NOT A SIZE RAMP. There is no `--radius-deck-sm`. One value, two
+     consumers; a second value would make it a scale and a scale is
+     how an exception becomes the system. */
+  --radius-deck: 16px;    /* the brief deck's cards + its entry card ONLY */
+
+  /* --- Elevation ------------------------------------------------
+     NO SHADOWS IN THE LAYOUT SYSTEM (SPEC-V4 §A5). Depth in a
+     document is a rule and a darker well, not a blur.
+
+     These two tokens survive for the three agreed exceptions and
+     nothing else:
+       · the BUTTON press idiom (`.btn` below) — hover lifts 1px onto
+         a soft shadow, `:active` puts it back down;
+       · the 3D artifacts in `components/artifact/**`;
+       · the framed poster in <PosterPreview />.
+     Every layout surface — cards, plates, panels, the hovercard —
+     bounds itself with a hairline. If a surface needs a shadow to be
+     legible, its hairline is too weak; fix the hairline.
+
+     Soft, neutral, low-contrast: a shadow here says "this control
+     sits 1px above the page", never "this element glows". Never
+     coloured, never spread without an offset. */
+  --shadow-lift: 0 1px 2px rgba(8, 9, 11, 0.10), 0 6px 16px -6px rgba(8, 9, 11, 0.22);
+  --shadow-lift-strong: 0 2px 4px rgba(8, 9, 11, 0.14), 0 16px 34px -12px rgba(8, 9, 11, 0.30);
+
+  /* --- Layout system ---------------------------------------------
+     THE CONTENT COLUMN. One measurement, stated once:
+
+         width      : calc(100% - 2 * var(--gutter-shell))
+         max-width  : calc(var(--container-shell) - 2 * var(--gutter-shell))
+
+     which is 1440 minus a 32px gutter each side = a 1376px column that
+     stops growing at a 1440px viewport. Above that the OUTER margin is
+     what grows, and the column does not — because measure is the thing
+     being protected. `.column` in the components layer implements it
+     and <Container> is the only thing that should apply it.
+     ---------------------------------------------------------------- */
+  --container-shell: 1440px;   /* the shell's outer bound */
+  --gutter-shell: 32px;        /* 2rem each side, at EVERY breakpoint */
+
+  /* THE DISPLAY CUTOUT, as a token. `viewportFit: 'cover'` is set in
+     app/layout.tsx, so on a notched iPhone the layout viewport runs
+     UNDER the notch and under the home indicator. In portrait Safari
+     these resolve to 0 — the browser chrome already covers the cutout —
+     but in LANDSCAPE the left and right insets are 47-59px each, and
+     without subtracting them the site bar's lockup, the sticky step
+     chrome and every line of body copy sit behind the sensor housing.
+     Held as custom properties rather than repeating `env()` at every
+     use so there is one place to reason about, and so a review can set
+     them to a real device's numbers and see the result. Zero on every
+     device that has no cutout, which makes every rule below a no-op
+     there. */
+  --safe-inset-left: env(safe-area-inset-left, 0px);
+  --safe-inset-right: env(safe-area-inset-right, 0px);
+  --column-max: 1376px;        /* = container-shell - 2 * gutter-shell */
+  --column-narrow: 696px;      /* long-form measure; ~68ch of prose */
+
+  /* THE FULL-BLEED GUTTER. A section that opts out of the column runs
+     edge to edge and controls its own inset. This is that inset, and
+     unlike --gutter-shell it GROWS: 20 / 32 / 40 / 48 / 64 / 80. It is
+     the main reason 1920 and 2400 read as compositions rather than a
+     1440 page floating in dead space — the bleed sections take the
+     extra width, the reading column refuses it. */
+  --gutter-bleed: 20px;
+  --column-bleed-max: 1376px;  /* bleed content cap: 1376 → 1600 → 2000 */
+
+  /* 12-col grid gaps. 20/18 at rest, opening to 40/40 at 2400 — the
+     grid gets airier with the viewport instead of denser. */
+  --grid-gap-x: 20px;          /* 12-col column gap */
+  --grid-gap-y: 18px;          /* 12-col row gap */
+
+  /* MEASURE. Line length caps in `ch`, so they hold as the type size
+     steps up. Nothing that is read runs wider than `--measure`. */
+  --measure-tight: 44ch;       /* standfirsts, pull quotes */
+  --measure: 66ch;             /* the default reading measure */
+  --measure-wide: 78ch;        /* dense reference copy, legal */
+
+  /* MEDIA RATIOS. These step too: a 16/9 frame that is full-bleed at
+     2400 is 1350px tall and stops being a band. Widening the ratio as
+     the viewport widens keeps full-bleed media a horizon, not a wall.
+     Available as `aspect-card` / `aspect-bleed` / `aspect-panel`. */
+  --aspect-card: 3 / 4;        /* in-column media tile */
+  --aspect-bleed: 4 / 5;       /* full-bleed media band */
+  --aspect-panel: 1 / 1;       /* the large single media panel */
+
+  /* Band rhythm. Base values 0 / 20 / 32 / 48 / 56 — the same five
+     names, no uniform section spacer — each stepping with the
+     viewport. Vertical air is the other half of composing at 1920. */
+  --band-flush: 0px;
+  --band-tight: 20px;
+  --band-snug: 32px;
+  --band-open: 48px;
+  --band-footer: 56px;
+
+  /* --- Motion ---------------------------------------------------
+     ONE curve for the whole site. `ease-house` at `duration-house` is
+     the answer to every "what transition?" question; longer reveals
+     use 600–900ms with the SAME curve. Nothing bounces, ever.
+     The FUI easings below stay for the telemetry layer's own sweeps. */
+  --ease-house: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-house: 300ms;
+
+  /* ENTRANCES. A different job from hover, so a different curve: a
+     pure ease-out over ~1s, so the move is almost over by the time you
+     notice it started. Used by scroll-in reveals and first paints,
+     never by hover — hover stays on --ease-house at 300ms.
+     Available as `ease-entrance` and the `duration-entrance` utility. */
+  --ease-entrance: cubic-bezier(0, 0, 0.58, 1);
+  --duration-entrance: 1000ms;
+
+  --ease-out-fui: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fui: 220ms;
+  --duration-sweep: 1400ms;
+
+  /* ------------------------------------------------------------------
+     THE HOUSE EASE-OUT — an override of Tailwind's, not an addition
+     ------------------------------------------------------------------
+     SPEC-V4 §A3. Tailwind ships `--ease-out: cubic-bezier(0,0,0.2,1)`.
+     That curve is already at 80% of its distance a third of the way
+     through: it SNAPS and then coasts, which is the right feel for a
+     toggle and the wrong one for a photograph coming forward.
+
+     `cubic-bezier(0, 0, 0.58, 1)` is the classic ease-out — the same
+     curve `--ease-entrance` already uses. It decelerates across the
+     whole duration rather than front-loading it, so a 200ms media
+     scale reads as a move that finishes rather than a jump that
+     settles. Redefining the token here rewrites every `ease-out`
+     utility and variant in the product at once.
+
+     `--ease-house` (cubic-bezier(0.4,0,0.2,1)) is untouched and stays
+     the answer for INTERACTION — hover in, hover out, press. It eases
+     in as well as out, which is what a reversible state wants.
+     ------------------------------------------------------------------ */
+  --ease-out: cubic-bezier(0, 0, 0.58, 1);
+
+  /* ------------------------------------------------------------------
+     THE DURATION SET (§A3)
+     ------------------------------------------------------------------
+     Five durations, and which one you use is decided by WHAT MOVES,
+     not by how the transition feels. Bigger things take longer, and
+     the difference between them is what stages a compound hover into
+     one gesture instead of five simultaneous ones.
+
+       media    200ms   an image scaling inside a frame it does not
+                        resize; a scrim deepening
+       reveal   250ms   a description, caption or subtitle arriving
+       link     300ms   colour and underline on text links — the same
+                        300ms as `--duration-house`, restated under
+                        the name of its job
+       icon     350ms   an arrow or glyph, which arrives LAST and
+                        slowest so the eye lands on it
+       image    500ms   a large image: a hero, a full-bleed band, a
+                        plate that occupies a third of the viewport
+
+     Available as `duration-media`, `duration-reveal`, `duration-link`,
+     `duration-icon`, `duration-image` (see @utility below).
+     ------------------------------------------------------------------ */
+  --duration-media: 200ms;
+  --duration-reveal: 250ms;
+  --duration-link: 300ms;
+  --duration-icon: 350ms;
+  --duration-image: 500ms;
+
+  /* The arrow's stagger. Not a duration — the wait BEFORE the icon
+     starts, which is the whole reason a card hover reads as
+     engineered rather than animated (§A4). */
+  --delay-icon: 150ms;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ==================================================================
+   GROUND CONTRACT
+   `--ground` / `--ink` are the indirection that lets one component
+   render correctly on both halves of the poster. A control reads them
+   instead of naming a colour, so putting it inside `.surface-light`
+   inverts it with no prop and no duplicated variant.
+   ================================================================== */
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+
+    /* Default ground is dark — a control outside any band still works. */
+    --ground: var(--color-void);
+    --ground-raised: var(--color-deck);
+    --ink: var(--color-paper);
+    --ink-dim: var(--color-paper-dim);
+    --ink-faint: var(--color-paper-faint);
+    --rule: var(--color-hairline);
+    --rule-strong: var(--color-hairline-strong);
+    --accent: var(--color-signal);
+    --focus-ring: var(--color-signal);
+  }
+
+  /* ==================================================================
+     ROOT FONT SIZE — why the §A1 ladder is NOT installed here
+     ==================================================================
+     SPEC-V4 §A1 proposes a fluid root:
+
+       html { font-size: 14px }                          .. below 1280
+       @media (min-width:1280px){ font-size: calc(1.25vw - 2px) }
+       @media (min-width:1440px){ font-size: calc(0.416667vw + 10px) }
+       @media (min-width:1920px){ font-size: calc(1.25vw - 6px) }
+       @media (min-width:2400px){ font-size: 24px }
+
+     It is the right mechanism for a system whose type is authored as
+     ONE ramp and left to interpolate. It is the wrong mechanism for
+     this one, and the reason is in the file above: every value with an
+     opinion about width is already RE-STATED at six widths (§ THE
+     STEPPED SYSTEM). There are no per-token `clamp()`s left to
+     collapse — the pain the ladder removes was removed already, by a
+     method that is strictly more expressive, because six authored
+     compositions can say things a single interpolation cannot.
+
+     Three of those things are load-bearing here, and each of them the
+     ladder would overwrite:
+
+       1. BODY IS FLAT AT 16px FROM 390 TO 1440. The ladder moves the
+          root 14→16 across 1280–1440, so a rem-authored body cannot
+          be constant there. Either it is 14px at 1280 (below the
+          reading size) or it drifts to 18.3px just under 1440 and
+          snaps back to 16. There is no third option.
+       2. HEADLINES ARE CAPPED. Hero runs 68→72 across 1920→2400,
+          +5.9%, against a root that grows +33% over the same span. A
+          rem hero would reach 90.7px before snapping back to 72. The
+          cap is the design — "a headline that tracked the viewport
+          would be a poster, not a page".
+       3. THE MICRO RAMPS GROW ON PURPOSE, AND SLOWLY. `--text-tele`
+          and `--text-file` step 11→12→13 (+9%, +8%) at 1920 and 2400
+          for viewing distance. Under the ladder `--text-file` at
+          0.8125rem renders 19.5px at 2400 — a 50% overshoot of a ramp
+          tuned to 13.
+
+     And below 1280 the ladder is not fluid at all: it is a constant
+     14px, i.e. a flat 12.5% shrink of the entire 390 and 768
+     composition, taking body to 14, `text-tele-xs` and `text-file-xs`
+     to 7.9px, and every `text-[1rem]` input to 14px — which is under
+     the 16px threshold at which iOS zooms the page on focus.
+
+     WHAT WAS TAKEN FROM §A1 INSTEAD
+       · `--spacing: 4px` in @theme, which is the ladder's own safety
+         requirement ("tap targets and inputs should stay in px")
+         implemented at the system level rather than 25 times by hand.
+         It also makes the ladder installable later without touching a
+         single tap target.
+       · `scrollbar-gutter: stable` below.
+
+     Installing the ladder properly would mean re-deriving all six
+     steps of both type ramps AND the ~156 arbitrary `rem` values in
+     40+ feature components — most of which are px intentions written
+     in rem (`text-[0.75rem]` meaning 12, `--file-meta-col: 8.5rem`
+     meaning 136). That is a whole-repo migration, not a token change,
+     and half of it is worse than none: the failure mode is silent,
+     and it is undersized type and undersized targets on phones.
+     ================================================================== */
+  html {
+    -webkit-text-size-adjust: 100%;
+
+    /* §A1. Reserve the scrollbar's width at all times, so a page that
+       grows past one viewport does not shift its whole layout left by
+       15px the moment it does. Matters most on the bands that are
+       measured off the viewport centre — the mosaic, the column
+       guides, the framed poster. */
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-void);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    letter-spacing: var(--text-body--letter-spacing);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--color-signal);
+    color: var(--color-void);
+  }
+
+  /* Focus ring — visible, on-brand, never removed. `--focus-ring`
+     swaps to the darker accent inside a light band, where #ff4d1c only
+     reaches 2.83:1 against paper. */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* Numeric telemetry never jitters. */
+  [data-telemetry] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ==================================================================
+   THE STEPPED SYSTEM
+   ==================================================================
+   Every value that has an opinion about viewport width is re-stated
+   here at each of the five steps. Read a column top to bottom and you
+   have the whole composition at that width.
+
+   These are `:root` overrides in @layer base, which sits ABOVE
+   @layer theme, so they win over the @theme defaults with no
+   `!important` and no duplicated utilities. Any utility built on the
+   token — `text-hero`, `gap-x-[var(--grid-gap-x)]`, `.column`,
+   `aspect-bleed` — follows automatically. Nothing here generates a
+   second class.
+
+   WHAT GROWS ABOVE 1440 AND WHAT DOES NOT
+     grows      outer margin, --gutter-bleed, --column-bleed-max, grid
+                gaps, band padding, media ratio width, micro-type
+     capped     --column-max (1376px, forever), the measure caps, and
+                the headline sizes
+   That split IS the answer to "composed at 1920, not stretched": the
+   page keeps a 1376px spine of readable text and spends every extra
+   pixel on bleed, air and image.
+   ================================================================== */
+
+@layer base {
+  /* ---- STEP 2 · 768 — tablet -------------------------------------
+     The nav comes out from behind the button. Type takes its first
+     step. Full-bleed sections move from a 20px inset to the column's
+     own 32px, so a bleed band and a column band line up here — the
+     one width where they agree. */
+  @media (width >= 48rem) {
+    :root {
+      --text-hero: 3rem;              /* 48 */
+      --text-hero--letter-spacing: -0.022em;
+      --text-display: 2rem;           /* 32 */
+      --text-heading: 1.375rem;       /* 22 */
+      --text-prose: 1.0625rem;        /* 17 */
+
+      --gutter-bleed: 32px;
+      --band-open: 56px;
+
+      --aspect-card: 4 / 5;
+      --aspect-bleed: 16 / 10;
+      --aspect-panel: 4 / 3;
+    }
+  }
+
+  /* ---- STEP 3 · 1280 — laptop ------------------------------------
+     The first width where the 12-col grid carries three and four
+     column spans comfortably. Labels step to 13, gaps open to 24, and
+     bleed sections start pulling away from the column. */
+  @media (width >= 80rem) {
+    :root {
+      --text-hero: 3.5rem;            /* 56 */
+      --text-hero--letter-spacing: -0.025em;
+      --text-display: 2.25rem;        /* 36 */
+      --text-display--letter-spacing: -0.022em;
+      --text-heading: 1.5rem;         /* 24 */
+      --text-label: 0.8125rem;        /* 13 */
+
+      --grid-gap-x: 24px;
+      --grid-gap-y: 22px;
+      --gutter-bleed: 40px;
+      --band-tight: 24px;
+      --band-snug: 40px;
+      --band-open: 64px;
+      --band-footer: 64px;
+
+      --aspect-card: 3 / 4;
+      --aspect-bleed: 16 / 9;
+      --aspect-panel: 3 / 2;
+    }
+  }
+
+  /* ---- STEP 4 · 1440 — the column is full -------------------------
+     `.column` reaches 1376px here and never grows again. Type reaches
+     its designed desktop size. Everything above this step is about
+     margin, air and bleed, not about the column. */
+  @media (width >= 90rem) {
+    :root {
+      --text-hero: 3.75rem;           /* 60 */
+      --text-display: 2.5rem;         /* 40 */
+      --text-heading: 1.625rem;       /* 26 */
+      --text-prose: 1.125rem;         /* 18 */
+      --text-note: 0.875rem;          /* 14 */
+
+      --grid-gap-y: 24px;
+      --gutter-bleed: 48px;
+      --band-open: 72px;
+      --band-footer: 72px;
+    }
+  }
+
+  /* ---- STEP 5 · 1920 ---------------------------------------------
+     The column stays at 1376 and the margins are now 272px a side. So
+     this step is spent entirely on the things that are ALLOWED to take
+     width: bleed sections widen to a 1600px cap with 64px gutters,
+     full-bleed media goes to 2.2:1, grid gaps open to 32, band padding
+     to 88. Reading type moves one point — a viewing-distance
+     correction, not a bigger design. Headlines move 60 → 68. */
+  @media (width >= 120rem) {
+    :root {
+      --text-hero: 4.25rem;           /* 68 */
+      --text-hero--letter-spacing: -0.028em;
+      --text-display: 2.75rem;        /* 44 */
+      --text-display--letter-spacing: -0.025em;
+      --text-heading: 1.75rem;        /* 28 */
+      --text-body: 1.0625rem;         /* 17 */
+      --text-prose: 1.1875rem;        /* 19 */
+      --text-prose--line-height: 1.65;
+      --text-note: 0.9375rem;         /* 15 */
+      --text-label: 0.875rem;         /* 14 */
+      --text-action: 1.0625rem;       /* 17 */
+      --text-tele: 0.75rem;           /* 12 */
+      --text-tele-s: 0.6875rem;       /* 11 */
+      --text-tele-xs: 0.625rem;       /* 10 */
+
+      --grid-gap-x: 32px;
+      --grid-gap-y: 32px;
+      --gutter-bleed: 64px;
+      --column-bleed-max: 1600px;
+      --band-tight: 28px;
+      --band-snug: 48px;
+      --band-open: 88px;
+      --band-footer: 88px;
+
+      --aspect-bleed: 11 / 5;         /* 2.2 : 1 */
+      --aspect-panel: 16 / 9;
+    }
+  }
+
+  /* ---- STEP 6 · 2400 ---------------------------------------------
+     Same argument, one more turn. Bleed content caps at 2000px with
+     80px gutters; full-bleed media goes to 2.5:1. The headline stops
+     at 72 — 20% larger than at 1440 across a viewport 67% wider — and
+     the reading measure has not moved since 390. */
+  @media (width >= 150rem) {
+    :root {
+      --text-hero: 4.5rem;            /* 72 — the cap */
+      --text-hero--letter-spacing: -0.03em;
+      --text-display: 2.875rem;       /* 46 — the cap */
+      --text-display--letter-spacing: -0.026em;
+      --text-heading: 1.8125rem;      /* 29 */
+      --text-body: 1.125rem;          /* 18 */
+      --text-prose: 1.25rem;          /* 20 */
+      --text-note: 1rem;              /* 16 */
+      --text-label: 0.9375rem;        /* 15 */
+      --text-action: 1.125rem;        /* 18 */
+      --text-tele: 0.8125rem;         /* 13 */
+      --text-tele-s: 0.75rem;         /* 12 */
+      --text-tele-xs: 0.6875rem;      /* 11 */
+
+      --grid-gap-x: 40px;
+      --grid-gap-y: 40px;
+      --gutter-bleed: 80px;
+      --column-bleed-max: 2000px;
+      --band-tight: 32px;
+      --band-snug: 56px;
+      --band-open: 104px;
+      --band-footer: 104px;
+
+      --aspect-bleed: 5 / 2;          /* 2.5 : 1 */
+      --aspect-panel: 2 / 1;
+    }
+  }
+}
+
+/* ==================================================================
+   SMOOTH SCROLL
+   ==================================================================
+   Document-level, CSS-first, and that is the whole implementation.
+   `scroll-behavior: smooth` on the scrolling element smooths anchor
+   navigation and programmatic `scrollTo` while leaving the wheel, the
+   trackpad, the scrollbar thumb, the spacebar and keyboard focus
+   scrolling completely untouched. Nothing is intercepted, nothing is
+   transformed, no RAF loop runs, no library ships. A scroll-jacking
+   library replaces the browser's scroller with a translated <div>,
+   which is what breaks the scrollbar, focus and find-in-page — this
+   does the opposite.
+
+   It is opt-OUT twice over: the `prefers-reduced-motion` query here,
+   and the global reduce block above, which sets
+   `scroll-behavior: auto !important` on everything.
+
+   <SmoothScroll /> (components/fui) refines this at runtime: it parks
+   the attribute at `off` while the browser restores a scroll position
+   on back/forward, so a history restore lands instantly instead of
+   gliding. Absent the component the CSS still stands on its own.
+   ================================================================== */
+
+@layer base {
+  @media (prefers-reduced-motion: no-preference) {
+    html:not([data-smooth-scroll='off']) {
+      scroll-behavior: smooth;
+    }
+  }
+
+  /* An anchor target never lands hard against the viewport edge. The
+     site bar is absolute, not fixed, so this is breathing room rather
+     than a header offset. */
+  html {
+    scroll-padding-block-start: 1.5rem;
+  }
+
+  @media (width >= 80rem) {
+    html { scroll-padding-block-start: 2.5rem; }
+  }
+
+  @media (width >= 120rem) {
+    html { scroll-padding-block-start: 4rem; }
+  }
+}
+
+@layer components {
+  /* ---------------------------------------------------------------
+     THE CONTENT COLUMN
+     ---------------------------------------------------------------
+     `width` + `max-width`, not `padding`. The element IS the column:
+     its box edge is where the text edge is, so a background, a rule or
+     a border drawn on it lands on the column edge rather than 32px
+     outside it.
+
+     The gutter is still real space — auto margins put it there — so
+     the escape idiom that predates this (`-mx-[var(--gutter-shell)]`
+     with matching padding, for an edge-to-edge scroller inside a
+     padded band) resolves to exactly the same pixels it always did,
+     and still cannot overflow: the child ends up exactly viewport-wide
+     below 1440 and 1440-wide above it.
+
+     Applied only by <Container>. Put it on anything else and you have
+     two containers.
+     --------------------------------------------------------------- */
+
+  /* The safe-area subtraction on each of these is a no-op wherever the
+     insets are 0 — i.e. everywhere but a notched phone held sideways,
+     where it is the difference between a readable column and one that
+     runs under the sensor housing. `margin-inline: auto` re-centres
+     what is left, so an asymmetric pair of insets is handled too. */
+  .column {
+    margin-inline: auto;
+    width: calc(
+      100% - 2 * var(--gutter-shell) - var(--safe-inset-left) - var(--safe-inset-right)
+    );
+    max-width: var(--column-max);
+  }
+
+  /* Long-form. Same gutter, a measure cap instead of the shell cap. */
+  .column-narrow {
+    margin-inline: auto;
+    width: calc(
+      100% - 2 * var(--gutter-shell) - var(--safe-inset-left) - var(--safe-inset-right)
+    );
+    max-width: var(--column-narrow);
+  }
+
+  /* The opt-out. Full width at every breakpoint, no gutter, no cap —
+     the section takes the whole viewport and pays for its own inset
+     (see `.column-bleed` / the `bleed-pad` utility). `max-width: none`
+     and `margin-inline: 0` are stated rather than omitted so the class
+     also clears a `.column` it may have inherited in a nested case. */
+  .column-flush {
+    margin-inline: 0;
+    width: 100%;
+    max-width: none;
+  }
+
+  /* ---------------------------------------------------------------
+     THE BLEED COLUMN — the inside of a full-bleed section.
+     Identical to `.column` up to 1440, where it and the column are the
+     same 1376px. Above that it keeps going: 1600 at 1920, 2000 at
+     2400, on a gutter that grows 20 → 80.
+
+     This is the width that answers 1920 and 2400. Bands that are index
+     or image — the mosaic, the film strip, the footer — sit on this
+     and use the display. Bands that are read sit on `.column` and do
+     not. The alternation between the two is the page's rhythm at large
+     widths, the same way the alternation between column and full-bleed
+     is its rhythm at small ones.
+     --------------------------------------------------------------- */
+  .column-bleed {
+    margin-inline: auto;
+    width: calc(
+      100% - 2 * var(--gutter-bleed) - var(--safe-inset-left) - var(--safe-inset-right)
+    );
+    max-width: var(--column-bleed-max);
+  }
+
+  /* The column, until there is genuinely too much room for it. Below
+     1920 this is `.column` exactly — same edge, same 1376px cap, so it
+     lines up with every other section on the page. From 1920 it
+     becomes `.column-bleed` and takes the display.
+
+     For sections that are INDEX rather than PROSE: the footer, a
+     mosaic, an archive listing. Never for running text — a paragraph
+     does not get better at 2000px, it gets unreadable. */
+  .column-expand {
+    margin-inline: auto;
+    width: calc(
+      100% - 2 * var(--gutter-shell) - var(--safe-inset-left) - var(--safe-inset-right)
+    );
+    max-width: var(--column-max);
+  }
+
+  @media (width >= 120rem) {
+    .column-expand {
+      width: calc(
+        100% - 2 * var(--gutter-bleed) - var(--safe-inset-left) - var(--safe-inset-right)
+      );
+      max-width: var(--column-bleed-max);
+    }
+  }
+
+  /* ---------------------------------------------------------------
+     GROUNDS
+     The page alternates; it does not run one value top to bottom.
+     Put one of these on a band and everything inside it — buttons,
+     rules, secondary text — follows.
+     --------------------------------------------------------------- */
+
+  .surface-dark {
+    --ground: var(--color-void);
+    --ground-raised: var(--color-deck);
+    --ink: var(--color-paper);
+    --ink-dim: var(--color-paper-dim);
+    --ink-faint: var(--color-paper-faint);
+    --rule: var(--color-hairline);
+    --rule-strong: var(--color-hairline-strong);
+    --accent: var(--color-signal);
+    --focus-ring: var(--color-signal);
+    background-color: var(--color-void);
+    color: var(--color-paper);
+  }
+
+  .surface-light {
+    --ground: var(--color-paper);
+    --ground-raised: #f6f5f1;
+    --ink: var(--color-void);
+    --ink-dim: var(--color-void-dim);
+    --ink-faint: var(--color-void-faint);
+    --rule: var(--color-hairline-ink);
+    --rule-strong: var(--color-hairline-ink-strong);
+    --accent: var(--color-signal-ink);
+    --focus-ring: var(--color-signal-ink);
+    background-color: var(--color-paper);
+    color: var(--color-void);
+    color-scheme: light;
+  }
+
+  /* Tone WITHOUT a ground. Same variable block, no background and no
+     colour — for a control that must invert to match the band it was
+     dropped into when that band is a photograph rather than a fill. */
+  .on-dark {
+    --ground: var(--color-void);
+    --ground-raised: var(--color-deck);
+    --ink: var(--color-paper);
+    --ink-dim: var(--color-paper-dim);
+    --ink-faint: var(--color-paper-faint);
+    --rule: var(--color-hairline);
+    --rule-strong: var(--color-hairline-strong);
+    --accent: var(--color-signal);
+    --focus-ring: var(--color-signal);
+  }
+
+  .on-light {
+    --ground: var(--color-paper);
+    --ground-raised: #f6f5f1;
+    --ink: var(--color-void);
+    --ink-dim: var(--color-void-dim);
+    --ink-faint: var(--color-void-faint);
+    --rule: var(--color-hairline-ink);
+    --rule-strong: var(--color-hairline-ink-strong);
+    --accent: var(--color-signal-ink);
+    --focus-ring: var(--color-signal-ink);
+  }
+
+  /* Ink helpers that follow the ground rather than naming a colour.
+     `text-paper-dim` / `text-void-dim` still exist and still work; use
+     these when one component has to serve both halves of the page. */
+  .ink { color: var(--ink); }
+  .ink-dim { color: var(--ink-dim); }
+  .ink-faint { color: var(--ink-faint); }
+  .rule-ground { border-color: var(--rule); }
+
+  /* ---------------------------------------------------------------
+     CONTROL — the anatomy, measured, then set in our palette
+     ---------------------------------------------------------------
+     Every button on this site is one class stack: `.btn` + a size +
+     a variant. <Button> and <ActionButton> are both thin wrappers
+     over it, which is the point — there was previously one control
+     idiom in `components/fui/Button.tsx` (16px sans, sentence case,
+     6px radius, a 1px hover LIFT) and a second, unrelated one in
+     `ActionButton.tsx` (11px mono, uppercase, square-ish, flat), and
+     the two sat next to each other on `/system` and `/s/[code]`.
+
+     THE REFERENCE, MEASURED
+     -----------------------
+     albedo.com/systems ships exactly one `.button` and it is used for
+     every call to action on the page. Sampled from the served
+     stylesheet:
+
+       radius        3px
+       border        1px solid, the SAME colour as the fill
+       padding       16px 32px
+       label         mono · 12px · 400 · line-height 1 ·
+                     +0.12px tracking · uppercase
+       height        46px  (44px at <=991px, where the label drops to 10px)
+       gap           8px to a glyph; glyphs are 18px and never alone
+       hover         fill AND border move one small step to a paler
+                     tint of the same hue — 200ms, colour only.
+                     No lift. No shadow. No transform.
+       active        nothing distinct
+       disabled      opacity .3, cursor default, face otherwise intact
+
+     WHAT WE TAKE, AND WHAT WE DO NOT
+     --------------------------------
+     Taken: the radius, the padding ratio (32px inline on a 44px
+     control is 0.73 of the height — theirs is 0.70), the flat
+     colour-only response, the self-coloured border, the uppercase
+     mono label with POSITIVE tracking, the 8px glyph gap, the
+     opacity-only disabled state.
+
+     Not taken: their hue (lime on indigo — ours is ink on ground and
+     the accent is never a fill, SPEC-V4 SS A5); their 10px mobile
+     label, because 10px uppercase mono is below the floor this
+     system sets for anything you have to READ before you press it —
+     our label holds 12px from 320 to 1440 and grows on large
+     displays like every other marker role; and their lack of an
+     active state, because a control that gives nothing back on press
+     feels broken on a touch screen. Ours darkens one further step
+     over 90ms, which is a press expressed in tone rather than in
+     translation — the same information the old 1px lift carried,
+     without the shadow that SS A5 bans everywhere else.
+
+     THE TRACKING SIGN: the label is a MARKER now, not a sentence, so
+     it takes positive tracking (SS A2). +0.12em at 12px is 1.44px —
+     our marker magnitude, not theirs; WAVE.md SS1 says their sign
+     flip confirms our rule, and it is the SIGN that had to be right.
+
+     GROUND: every declaration reads --ground/--ink, so one primary
+     button is paper-on-void inside `.surface-dark` and void-on-paper
+     inside `.surface-light` with no variant and no prop.
+     --------------------------------------------------------------- */
+
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* Their glyph gap. 10px was our old value and it read as a word
+       space between the label and the arrow rather than a pairing. */
+    gap: 0.5rem;
+    isolation: isolate;
+    border: 1px solid transparent;
+    border-radius: var(--radius-action);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;                 /* 12 */
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+    white-space: nowrap;
+    user-select: none;
+    touch-action: manipulation;
+    /* Colour only — `transform` and `box-shadow` are deliberately not
+       in this list. See the note above. */
+    transition-property: color, background-color, border-color, opacity;
+    transition-duration: 200ms;
+    transition-timing-function: var(--ease-house);
+  }
+
+  /* Micro-type is the first thing that disappears on a large display
+     seen from a normal distance, so the control label grows there —
+     the same two steps `--text-tele` takes. It does NOT shrink below
+     1920; a control never gets smaller because the window did. */
+  @media (width >= 120rem) {
+    .btn { font-size: 0.8125rem; }      /* 13 */
+  }
+
+  @media (width >= 150rem) {
+    .btn { font-size: 0.875rem; }       /* 14 */
+  }
+
+  /* THREE SIZES, TWO HEIGHTS. `sm` is a NARROWER button, never a
+     shorter one: 44px is the tap-target floor and no control in this
+     product is allowed under it. Inline padding is the reference's
+     32px on the default size, stepped down for `sm` and up for `lg`
+     in the same proportion. */
+  .btn-sm { height: 44px; padding-inline: 1.25rem; }   /* 20 */
+  .btn-md { height: 44px; padding-inline: 2rem; }      /* 32 — theirs */
+  .btn-lg { height: 52px; padding-inline: 2.5rem; }    /* 40 */
+
+  /* Primary — the ink itself becomes the ground, and the border is the
+     same colour as the fill, exactly as the reference draws it.
+
+     THIS USED TO TAKE THE ACCENT ON HOVER, and that was the single
+     biggest accent violation in the product (SS A5: "never a button
+     fill"). The hover is now a one-step recession: the fill draws 8%
+     back toward its own ground — ink absorbing, the way pressure
+     marks paper. The reference moves its fill one step PALER; on a
+     two-ground system "paler" has no fixed direction, so we move
+     toward the ground, which is the same gesture and works on both
+     halves of the page. 8% still leaves 14.5:1 on the dark half and
+     14.9:1 on the light one, so the label is never at risk. */
+  .btn-primary {
+    background-color: var(--ink);
+    border-color: var(--ink);
+    color: var(--ground);
+  }
+
+  /* 45% is not a taste value. A control's boundary has to clear 3:1
+     against its ground (WCAG 1.4.11), and paper is so much lighter than
+     void that the two grounds need different percentages to get there —
+     45% is the one number that clears it on both: 3.97:1 of ink on void,
+     3.11:1 of void on paper. Below ~40% the outline disappears on the
+     dark half and the button starts to look like a mistake. */
+  .btn-secondary {
+    background-color: transparent;
+    border-color: color-mix(in srgb, var(--ink) 45%, transparent);
+    color: var(--ink);
+  }
+
+  .btn-ghost {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--ink-dim);
+    padding-inline: 1rem;
+  }
+
+  @media (hover: hover) {
+    .btn-primary:hover {
+      background-color: color-mix(in srgb, var(--ink) 92%, var(--ground));
+      border-color: color-mix(in srgb, var(--ink) 92%, var(--ground));
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--ink);
+      background-color: color-mix(in srgb, var(--ink) 8%, transparent);
+    }
+
+    .btn-ghost:hover {
+      color: var(--ink);
+      background-color: color-mix(in srgb, var(--ink) 6%, transparent);
+    }
+  }
+
+  /* The press, in tone. One further step over 90ms — fast enough to
+     land inside the touch, slow enough to be seen. Fires on pointer
+     AND on keyboard, and needs no transform, so there is nothing here
+     for `prefers-reduced-motion` to take away. */
+  .btn-primary:active,
+  .btn-primary[data-pressed='true'] {
+    background-color: color-mix(in srgb, var(--ink) 84%, var(--ground));
+    border-color: color-mix(in srgb, var(--ink) 84%, var(--ground));
+    transition-duration: 90ms;
+  }
+
+  .btn-secondary:active,
+  .btn-secondary[data-pressed='true'] {
+    border-color: var(--ink);
+    background-color: color-mix(in srgb, var(--ink) 16%, transparent);
+    transition-duration: 90ms;
+  }
+
+  .btn-ghost:active {
+    color: var(--ink);
+    background-color: color-mix(in srgb, var(--ink) 12%, transparent);
+    transition-duration: 90ms;
+  }
+
+  /* Waiting. The label stays put and a hairline scans the bottom edge:
+     there is no spinner anywhere in this product. */
+  .btn[aria-busy='true'] {
+    cursor: progress;
+    pointer-events: none;
+  }
+
+  /* The label is a flex box, not a plain span, because several call
+     sites pass TWO strings — `Pay $420` + `Simulated`, `Open mission
+     file` + the code. As flex items they get a real gap AND they stay
+     separate nodes for the accessible-name computation, which is what
+     keeps `Pay $420 Simulated` from collapsing into one word. */
+  .btn-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+
+  .btn[aria-busy='true'] > .btn-label {
+    opacity: 0.55;
+  }
+
+  /* The glyph slot is a sibling of the label, not a child of it, so a
+     busy control dims the WORDS and leaves the mark at full strength —
+     the arrow is the only part of the face still saying which way this
+     control goes while it waits. */
+  .btn-glyph {
+    line-height: 0;
+  }
+
+  .btn-scan {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 2px;
+    overflow: hidden;
+    border-end-start-radius: var(--radius-action);
+    border-end-end-radius: var(--radius-action);
+    pointer-events: none;
+  }
+
+  .btn-scan::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    width: 45%;
+    background-color: currentColor;
+    opacity: 0.85;
+    animation: sweep-x 1100ms var(--ease-house) infinite;
+  }
+
+  /* Disabled, the reference's way: the face is not rebuilt, it is
+     withdrawn. The old rule swapped every variant for a hairline
+     outline, which meant a disabled primary looked like an enabled
+     secondary — the one thing a disabled state must never look like.
+     .35 rather than their .30 because our ground is darker and a
+     paper fill at .30 on void reads as a smudge. Disabled controls
+     are exempt from WCAG 1.4.3/1.4.11, and this one is still the
+     brightest thing in its row. */
+  .btn:disabled:not([aria-busy='true']),
+  .btn[aria-disabled='true']:not([aria-busy='true']) {
+    pointer-events: none;
+    cursor: default;
+    opacity: 0.35;
+  }
+
+  /* A BUSY control is inert too — it carries the native `disabled`
+     attribute so Enter cannot fire it — but it is NOT disabled, and it
+     must not wear the disabled face. Waiting is a full-strength
+     control with a dimmed label and a moving edge; withdrawn is a
+     control that will not act at all. Conflating the two made every
+     `loading` button on the site look broken. */
+  .btn:disabled[aria-busy='true'] {
+    cursor: progress;
+  }
+
+  /* Nothing in the control moves any more, so the only thing left for
+     reduced motion is the loading sweep. */
+  @media (prefers-reduced-motion: reduce) {
+    .btn-scan::after {
+      animation: none;
+      width: 100%;
+      opacity: 0.4;
+    }
+  }
+
+  /* ---------------------------------------------------------------
+     HOVER CARD — the media hover vocabulary, in one place.
+     The image moves, the frame does not: scale lives on the <img> and
+     the container clips it, so nothing reflows and the hairline stays
+     exactly 1px. 1.03 is the whole move; anything larger reads as a
+     carousel effect rather than a plate coming forward.
+     --------------------------------------------------------------- */
+
+  /* No `box-shadow` and no `translateY` in the transition list any
+     more (§A5: no shadows in the layout system). The plate is a sheet
+     on a page, and a sheet on a page does not levitate — what changes
+     on hover is the RULE, which is exactly the affordance a document
+     has. It transitions on the link duration because a border colour
+     is the same class of change as a link's colour. */
+  .hovercard {
+    position: relative;
+    display: block;
+    isolation: isolate;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--rule);
+    background-color: var(--ground-raised);
+    overflow: hidden;
+    transition-property: border-color;
+    transition-duration: var(--duration-link);
+    transition-timing-function: var(--ease-house);
+  }
+
+  .hovercard-media {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-deck);
+  }
+
+  /* Media: 200ms, the §A3 media duration, on the house ease-out. */
+  .hovercard-media img {
+    transition: transform var(--duration-media) var(--ease-out);
+    will-change: transform;
+  }
+
+  /* The caption sits below the fold of the frame and rises into it.
+     250ms — the reveal duration, 50ms behind the image, so the frame
+     is already moving when the caption starts. */
+  .hovercard-reveal {
+    transition-property: opacity, transform;
+    transition-duration: var(--duration-reveal);
+    transition-timing-function: var(--ease-out);
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  @media (hover: hover) {
+    .hovercard:hover {
+      border-color: var(--rule-strong);
+    }
+
+    .hovercard:hover .hovercard-media img,
+    .hovercard:focus-visible .hovercard-media img {
+      transform: scale(1.03);
+    }
+
+    .hovercard:hover .hovercard-reveal,
+    .hovercard:focus-visible .hovercard-reveal {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Touch and keyboard never hide information behind a hover. */
+  @media (hover: none) {
+    .hovercard-reveal {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .hovercard:focus-visible .hovercard-reveal {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hovercard-media img,
+    .hovercard:hover .hovercard-media img {
+      transform: none !important;
+    }
+
+    .hovercard-reveal {
+      opacity: 1;
+      transform: none !important;
+    }
+  }
+
+  /* ---------------------------------------------------------------
+     LIST ROW — the hover state for readouts and link rows.
+     A negative inline margin plus matching padding means the highlight
+     bleeds past the text without the row shifting when it lights up.
+     --------------------------------------------------------------- */
+
+  /* `--radius-card`, not `--radius-action`: a row highlight is a
+     surface, not a control. At 2px it reads as a struck band rather
+     than as a pill someone forgot to fill in. */
+  .row-hover {
+    border-radius: var(--radius-card);
+    margin-inline: -0.625rem;
+    padding-inline: 0.625rem;
+    transition-property: background-color, color;
+    transition-duration: var(--duration-link);
+    transition-timing-function: var(--ease-house);
+  }
+
+  @media (hover: hover) {
+    .row-hover:hover {
+      background-color: color-mix(in srgb, var(--ink) 5%, transparent);
+    }
+  }
+
+  /* Underline that grows from the leading edge — for inline text links
+     inside prose, where a colour change alone is not enough. */
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 0% 1px;
+    /* 300ms — the §A3 LINK duration, which is the same number
+       `--duration-house` already carried, now stated under the name
+       of the job it is doing. */
+    transition: background-size var(--duration-link) var(--ease-out),
+      color var(--duration-link) var(--ease-out);
+  }
+
+  .link-underline:hover,
+  .link-underline:focus-visible {
+    background-size: 100% 1px;
+  }
+
+  /* Telemetry label: the workhorse of the whole system. */
+  .tele {
+    font-family: var(--font-mono);
+    font-size: var(--text-tele);
+    line-height: var(--text-tele--line-height);
+    letter-spacing: var(--text-tele--letter-spacing);
+    text-transform: uppercase;
+    color: var(--color-paper-dim);
+  }
+
+  .tele-s {
+    font-family: var(--font-mono);
+    font-size: var(--text-tele-s);
+    line-height: var(--text-tele-s--line-height);
+    letter-spacing: var(--text-tele-s--letter-spacing);
+    text-transform: uppercase;
+    color: var(--color-paper-faint);
+  }
+
+  .tele-xs {
+    font-family: var(--font-mono);
+    font-size: var(--text-tele-xs);
+    line-height: var(--text-tele-xs--line-height);
+    letter-spacing: var(--text-tele-xs--letter-spacing);
+    text-transform: uppercase;
+    color: var(--color-paper-faint);
+  }
+
+  /* 1px hairline rule */
+  .hairline {
+    border-color: var(--color-hairline);
+  }
+
+  /* ---------------------------------------------------------------
+     DESIGNED STATES
+     There is no spinner anywhere in this product. A thing that is
+     working is a plate being scanned; a thing that is unavailable is
+     hatched out like a redacted field; a thing that failed says so in
+     mission voice on a signal-toned rule.
+     --------------------------------------------------------------- */
+
+  /* Loading. Put on any element that is awaiting data. Pair with
+     aria-busy="true". The sweep is drawn, never spun. */
+  .fui-loading {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background-color: color-mix(in srgb, var(--color-deck) 70%, transparent);
+  }
+
+  .fui-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--color-paper) 6%, transparent) 45%,
+      color-mix(in srgb, var(--color-paper) 10%, transparent) 50%,
+      color-mix(in srgb, var(--color-paper) 6%, transparent) 55%,
+      transparent 100%
+    );
+    transform: translateX(-100%);
+    animation: sweep-x var(--duration-sweep) var(--ease-out-fui) infinite;
+  }
+
+  /* Disabled / unavailable. Diagonal hairline hatch — a struck-out
+     field on a form, not a greyed-out button. */
+  .fui-disabled {
+    cursor: not-allowed;
+    color: var(--color-paper-faint);
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--color-paper) 7%, transparent) 5px 6px
+    );
+  }
+
+  .fui-disabled > * {
+    opacity: 0.55;
+  }
+
+  /* Error. A signal hairline and a signal rule down the left edge.
+     Copy inside is written in mission voice — never "Oops". */
+  .fui-error {
+    border: 1px solid color-mix(in srgb, var(--color-signal) 45%, transparent);
+    border-left-width: 2px;
+    background-color: color-mix(in srgb, var(--color-signal) 6%, transparent);
+    color: var(--color-paper);
+  }
+
+  /* The hatch on its own — redacted areas, unavailable formats. */
+  .fui-hatch {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent 0 5px,
+      color-mix(in srgb, var(--color-paper) 7%, transparent) 5px 6px
+    );
+  }
+}
+
+/* ==================================================================
+   UTILITIES
+   `@utility` (not `@layer utilities`) so these compose with variants:
+   `sm:transition-house`, `group-hover:...` and so on all work.
+   ================================================================== */
+
+/* The house transition. One curve, one duration, everywhere. */
+@utility transition-house {
+  transition-property: color, background-color, border-color, box-shadow, transform,
+    opacity, filter;
+  transition-timing-function: var(--ease-house);
+  transition-duration: var(--duration-house);
+}
+
+/* The duration on its own, for the rare case that needs a custom
+   property list. `ease-house` comes free from the --ease-* token. */
+@utility duration-house {
+  transition-duration: var(--duration-house);
+}
+
+/* The entrance transition. A different job — arrival, not response —
+   so a different curve and roughly 3x the duration. Never for hover. */
+@utility transition-entrance {
+  transition-property: opacity, transform, filter;
+  transition-timing-function: var(--ease-entrance);
+  transition-duration: var(--duration-entrance);
+}
+
+@utility duration-entrance {
+  transition-duration: var(--duration-entrance);
+}
+
+/* ------------------------------------------------------------------
+   THE DURATION SET (§A3) as utilities.
+   `duration-media` / `duration-reveal` / `duration-link` /
+   `duration-icon` / `duration-image`, plus `delay-icon` for the
+   arrow's 150ms wait. Named for the JOB so a compound hover can be
+   read off the class list — see <MediaCard />, where the four moves
+   carry four different names and that is the point.
+   ------------------------------------------------------------------ */
+@utility duration-media {
+  transition-duration: var(--duration-media);
+}
+
+@utility duration-reveal {
+  transition-duration: var(--duration-reveal);
+}
+
+@utility duration-link {
+  transition-duration: var(--duration-link);
+}
+
+@utility duration-icon {
+  transition-duration: var(--duration-icon);
+}
+
+@utility duration-image {
+  transition-duration: var(--duration-image);
+}
+
+@utility delay-icon {
+  transition-delay: var(--delay-icon);
+}
+
+/* ------------------------------------------------------------------
+   SCROLL-IN REVEAL
+   Opacity plus a small rise, ~1s, heavily eased, nothing bounces.
+
+   Driven by `animation-timeline: view()` — the browser's own scroll
+   timeline. No IntersectionObserver, no client component, no hydration
+   cost, and it works inside a server-rendered tree. Where the timeline
+   is not supported the element is simply already there, which is the
+   correct fallback: the reveal is a nicety and the content is not.
+
+   Guarded twice: `prefers-reduced-motion: no-preference` here, and the
+   global reduce block, which flattens animation-duration site-wide.
+   ------------------------------------------------------------------ */
+@utility reveal {
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      animation: reveal-in var(--duration-entrance) var(--ease-entrance) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 24%;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------
+   MEASURE
+   Line-length caps in `ch`, so they hold as the type steps up at 1920
+   and 2400. Put one on every paragraph that is not already inside
+   `.column-narrow`. This is the single rule that stops a 2400px
+   viewport producing a 2000px line of body copy.
+   ------------------------------------------------------------------ */
+@utility measure {
+  max-width: var(--measure);
+}
+
+@utility measure-tight {
+  max-width: var(--measure-tight);
+}
+
+@utility measure-wide {
+  max-width: var(--measure-wide);
+}
+
+/* The inside inset of a full-bleed section, as padding rather than as
+   a nested `.column-bleed` element. 20 / 32 / 40 / 48 / 64 / 80. */
+/* THE CUTOUT, ON ITS OWN.
+
+   `bleed-pad` adds the display cutout to a bleed gutter. This adds it to
+   NOTHING ELSE — for content that is deliberately edge to edge and must stay
+   edge to edge on every device that has no cutout.
+
+   The full-bleed tile grids are the case it exists for. Their tiles are
+   links, and in landscape on a notched iPhone the left and right insets are
+   47-59px each, which is more than the tiles' own internal padding: the city
+   name and the coordinate line on the outermost tiles sat underneath the
+   sensor housing, measured at 17-18px from the edge against a 59px inset.
+   An immersive background may run under the cutout; an interactive label may
+   not.
+
+   Zero on every device without a cutout, so the grids stay flush there. */
+@utility safe-pad-x {
+  padding-inline: var(--safe-inset-left) var(--safe-inset-right);
+}
+
+@utility bleed-pad {
+  padding-inline:
+    calc(var(--gutter-bleed) + var(--safe-inset-left))
+    calc(var(--gutter-bleed) + var(--safe-inset-right));
+}
+
+/* ------------------------------------------------------------------
+   COLUMN GUIDES
+   Above 1920 the margin either side of the 1376px column is 272px and
+   then 512px. Two hairlines drawn on the column edge turn that from
+   emptiness into a stated margin — the same device a broadsheet uses.
+   Deliberately invisible below 1920, where there is no margin to
+   explain. Put it on a Band, not on the Container.
+   ------------------------------------------------------------------ */
+@utility column-guides {
+  @media (width >= 120rem) {
+    &::before,
+    &::after {
+      content: "";
+      position: absolute;
+      inset-block: 0;
+      width: 1px;
+      background-color: var(--rule);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    &::before {
+      left: max(var(--gutter-shell), calc(50% - var(--column-max) / 2));
+    }
+
+    &::after {
+      right: max(var(--gutter-shell), calc(50% - var(--column-max) / 2));
+    }
+  }
+}
+
+@layer utilities {
+  /* Film grain — a single tiled data-URI, GPU-cheap, pointer-events none.
+     Applied once at the root by <GrainOverlay />.
+
+     Deliberately below the header (z-50) so it never films over the
+     navigation, and deliberately weak: at 0.035 it reads as an emulsion
+     on the page, not as noise on the photograph. On 2x displays the
+     tile is sampled denser, so it is dropped further still. */
+  .grain-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: screen;
+    background-repeat: repeat;
+    background-size: 200px 200px;
+    will-change: transform;
+  }
+
+  @media (min-resolution: 2dppx) {
+    .grain-overlay {
+      opacity: 0.028;
+      background-size: 160px 160px;
+    }
+  }
+
+  /* Scroll-in entrance. 24px is the whole move — far enough to read as
+     arrival, short enough that a fast scroll never catches it mid-air. */
+  @keyframes reveal-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 1.5rem, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Pulse for LIVE elements only. */
+  @keyframes signal-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  .animate-signal-pulse {
+    animation: signal-pulse 2s var(--ease-out-fui) infinite;
+  }
+
+  /* Horizontal sweep — acquiring / scanning. */
+  @keyframes sweep-x {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
+
+  /* One-shot version: runs once and stays out of frame. Used by
+     <ScanSweep /> when a plate resolves. */
+  .animate-sweep-once {
+    animation: sweep-x var(--duration-sweep) var(--ease-out-fui) 1 forwards;
+  }
+
+  .animate-sweep-loop {
+    animation: sweep-x var(--duration-sweep) linear infinite;
+  }
+
+  /* ---------------------------------------------------------------
+     ORBIT — the pass marker travels the track it is drawn on.
+     `offset-path` takes the same path string the track is stroked
+     with, so the marker can never drift off the ellipse. The rotation
+     is pinned at 0 so the crosshair stays square to the page while the
+     object moves: that is the difference between an instrument readout
+     and a spinning ornament.
+     --------------------------------------------------------------- */
+  @keyframes orbit-travel {
+    from { offset-distance: 0%; }
+    to { offset-distance: 100%; }
+  }
+
+  .orbit-marker {
+    offset-rotate: 0deg;
+    offset-distance: 0%;
+    animation: orbit-travel var(--orbit-period, 16s) linear infinite;
+  }
+
+  /* Reduced motion parks the marker at its rest phase. `animation:
+     none` beats the global !important duration override, which would
+     otherwise snap it to 100% instead of stopping it. */
+  @media (prefers-reduced-motion: reduce) {
+    .orbit-marker {
+      animation: none !important;
+      offset-distance: var(--orbit-phase, 12%);
+    }
+  }
+}
+
+/* ==================================================================
+   THE MISSION FILE LAYER
+   ==================================================================
+   Everything below is ADDITIVE and scoped to one page family: the
+   mission file (`/m/[code]`, `/s/[code]`) and the poster. Nothing
+   above this line changes, no existing token is redefined, and the
+   global body face is untouched — a page that never writes
+   `font-typestar`, `.file`, `.doc-panel` or one of the mission
+   components gets exactly the CSS it got before.
+
+   Tailwind v4 merges multiple `@theme` and `@layer` blocks, so this
+   sits at the end of the file as one self-contained section rather
+   than being threaded through the blocks above.
+
+   WHY IT EXISTS
+   The mission file is a technical DOCUMENT, not a dashboard. Three
+   things separate the two, and this layer is those three things:
+
+     1. a display face for the lockup and the title, so the page has
+        one voice at large size that the rest of the site does not;
+     2. a detail ramp that is genuinely SMALL — 11 / 10 / 9, against
+        the 12→15 label and 16→18 action roles the page had been
+        setting its data in. Detail type that is the same size as body
+        copy is what makes a record read as a web page;
+     3. rhythm measured in whitespace rather than in cards: a headline
+        with a lot of air under it, sections separated by 56→160px of
+        nothing, and 1px rules instead of boxes.
+   ================================================================== */
+
+@theme {
+  /* --- The two mission faces --------------------------------------
+     Same shape as `--font-mono` / `--font-sans` above: next/font owns
+     the `-face` variable (one family, set on <html> by the app shell),
+     these own the whole stack. Both generate a Tailwind utility —
+     `font-ductile` and `font-typestar`.
+
+     DUCTILE IS CAPS ONLY. 82 glyphs, no lowercase. `font-ductile` on
+     its own will drop lowercase letters through to Inter mid-word;
+     use `.mission-title` / `.mission-lockup` below, which uppercase.
+     ---------------------------------------------------------------- */
+  --font-ductile: var(--font-ductile-face), var(--font-inter), ui-sans-serif, system-ui,
+    -apple-system, sans-serif;
+  --font-typestar: var(--font-typestar-face), var(--font-plex-mono), ui-monospace,
+    SFMono-Regular, Menlo, monospace;
+
+  /* ------------------------------------------------------------------
+     THE DETAIL RAMP — `text-file` / `text-file-s` / `text-file-xs`
+     ------------------------------------------------------------------
+     11 / 10 / 9 at rest, flat from 390 all the way to 1440, then one
+     step at 1920 and one at 2400 (12/11/10, then 13/12/11) — the same
+     argument the telemetry ramp makes: micro-type is the first thing
+     that disappears on a large display at a normal viewing distance,
+     so it is the one thing that has to grow there.
+
+     WHY 11/10/9 AND NOT THE TELEMETRY RAMP'S 11/10/9
+     The sizes match; the settings do not, because the face does not.
+     Typestar OCR has an x-height of 545/1000 against IBM Plex Mono's
+     516 and an advance of 0.664em against 0.600em. It is 6% taller in
+     the lowercase and 11% wider per character at the same px, so it
+     reads a size larger than it is set and it needs materially LESS
+     tracking to stay open: 0.06 / 0.07 / 0.08em here, against the
+     mono ramp's 0.14 / 0.16 / 0.20em. Carrying the mono tracking over
+     would blow a nine-character coordinate to the width of a sentence.
+
+     LINE-HEIGHTS ARE TUNED FOR TABULAR READING, not for prose. 1.45 /
+     1.4 / 1.35: tight enough that a six-row sequence table reads as
+     one block, open enough that an uppercase label wrapping to two
+     lines does not collide with itself. They are stated explicitly
+     because the face's own hhea metrics are lopsided (ascender 985,
+     descender −232) and would otherwise produce a line box with all
+     of its leading above the type.
+
+     CONTRAST. WCAG 2.2 sets no minimum font SIZE; 4.5:1 is required
+     at every size below 18pt, so the ramp passes or fails on ink
+     colour alone. Measured against every ground in the system:
+
+                       void    deck   deck-2 | paper  raised
+       paper           16.99   16.36   15.32 |   —      —
+       paper-dim        7.54    7.26    6.80 |   —      —
+       paper-faint      5.07    4.88    4.57 |   —      —
+       void              —       —       —   | 16.99  18.26
+       void-dim          —       —       —   |  7.04   7.57
+       void-faint        —       —       —   |  5.03   5.40
+
+     Every ink in the palette clears 4.5:1 on every ground, so all
+     three steps of the ramp clear AA — 9px included. The floor is set
+     on JUDGEMENT rather than on the standard: `.file-xs` colours
+     itself `--ink-dim` (7.54 dark / 7.04 light, AA and AAA both) and
+     never `--ink-faint`, because 4.57:1 on `deck-2` is a 0.07
+     margin at 9px and that is not a margin. `--ink-faint` stays
+     available at `.file` and `.file-s`, where it is comfortable.
+     ------------------------------------------------------------------ */
+
+  /* Detail — the default. Readings, running detail text, sequence
+     rows. 11 / 11 / 11 / 11 / 12 / 13. */
+  --text-file: 0.6875rem;                                          /* 11 */
+  --text-file--line-height: 1.45;
+  --text-file--letter-spacing: 0.06em;
+  --text-file--font-weight: 400;
+
+  /* Detail small — labels, file tags, column heads. 10 → 11 → 12. */
+  --text-file-s: 0.625rem;                                         /* 10 */
+  --text-file-s--line-height: 1.4;
+  --text-file-s--letter-spacing: 0.07em;
+  --text-file-s--font-weight: 400;
+
+  /* Detail extra-small — index pairs, corner marks, the smallest tag
+     on the page. Short strings only; never a sentence. 9 → 10 → 11. */
+  --text-file-xs: 0.5625rem;                                       /* 9 */
+  --text-file-xs--line-height: 1.35;
+  --text-file-xs--letter-spacing: 0.08em;
+  --text-file-xs--font-weight: 400;
+
+  /* ------------------------------------------------------------------
+     THE DISPLAY ROLES — Ductile, mission file only
+     ------------------------------------------------------------------
+     Stated at their own sizes rather than borrowing `--text-hero`,
+     because Ductile's cap-height is 875/1000 against Inter's 727
+     (1490/2048): set at the same px it is ~20% taller on the page. A
+     Ductile headline at the hero's 60px would out-shout every other
+     band on the site.
+
+       title   28 / 40 / 52 / 60 / 70 / 78   the one big line
+
+     THE BASE STEP IS SET BY THE WIDEST WORD, not by taste. Ductile's
+     advance is 1.02em against Inter's 0.74 for a capital H: it is 38%
+     wider per character. At 390 the column is 326px, so a 28px title
+     takes 11 characters to the line and a 34px title took 9 — which
+     is one character short of `DECLASSIFIED` and half a word short of
+     most of this product's vocabulary. `overflow-wrap: break-word` on
+     the class is the backstop for the pathological case; the size is
+     the actual fix.
+       lockup  the `MISSION / 32BF` record, three sizes, on its own
+               scale because it is an identifier and not a headline
+     ------------------------------------------------------------------ */
+  --text-mission-title: 1.75rem;                                   /* 28 */
+  --text-mission-title--line-height: 0.98;
+  --text-mission-title--letter-spacing: -0.01em;
+  --text-mission-title--font-weight: 400;
+
+  /* ------------------------------------------------------------------
+     RHYTHM — the document's vertical measure
+     ------------------------------------------------------------------
+     The reference skeleton is whitespace, not containers. Three
+     values carry it, and all three grow at every step; that growth is
+     what stops 1920 and 2400 reading as a 1440 page in dead space.
+
+       head-air     the gap under the big headline before anything
+                    else starts. Deliberately the largest number on
+                    the page:      48 / 64 / 88 / 96 / 128 / 152
+       section-gap  between stacked sections of the file:
+                    is             56 / 72 / 96 / 112 / 136 / 160
+       row-gap      inside a stack of ruled data rows — this one is
+                    nearly flat, because a data block is meant to be
+                    dense:         10 / 10 / 12 / 12 / 14 / 16
+     ------------------------------------------------------------------ */
+  --file-head-air: 48px;
+  --file-section-gap: 56px;
+  --file-row-gap: 10px;
+
+  /* The narrow left column of a meta row. Wide enough for two words
+     of `--text-file-s` uppercase per line, no wider — the whole point
+     of the pair is that the label column is visibly the minor one.
+     Stacks below 768; from 768 it is a real column. */
+  --file-meta-col: 8.5rem;
+
+  /* The document panel's clipped top-right corner, as on a physical
+     file. 20 / 24 / 28 / 32 / 40 / 48. */
+  --doc-cut: 20px;
+
+  /* Inside padding of a document panel. */
+  --doc-pad: 20px;
+}
+
+/* ==================================================================
+   THE MISSION FILE — stepped
+   Same argument and the same five steps as THE STEPPED SYSTEM above,
+   restated for this layer's own tokens. `:root` overrides in
+   @layer base, so every utility built on the token follows and no
+   second class is generated.
+   ================================================================== */
+
+@layer base {
+  /* ---- STEP 2 · 768 ---------------------------------------------- */
+  @media (width >= 48rem) {
+    :root {
+      --text-mission-title: 2.5rem;    /* 40 */
+      --file-head-air: 64px;
+      --file-section-gap: 72px;
+      --doc-cut: 24px;
+      --doc-pad: 28px;
+    }
+  }
+
+  /* ---- STEP 3 · 1280 --------------------------------------------- */
+  @media (width >= 80rem) {
+    :root {
+      --text-mission-title: 3.25rem;   /* 52 */
+      --text-mission-title--letter-spacing: -0.015em;
+      --file-head-air: 88px;
+      --file-section-gap: 96px;
+      --file-row-gap: 12px;
+      --doc-cut: 28px;
+      --doc-pad: 32px;
+    }
+  }
+
+  /* ---- STEP 4 · 1440 --------------------------------------------- */
+  @media (width >= 90rem) {
+    :root {
+      --text-mission-title: 3.75rem;   /* 60 */
+      --file-head-air: 96px;
+      --file-section-gap: 112px;
+      --file-meta-col: 9.5rem;
+      --doc-cut: 32px;
+      --doc-pad: 36px;
+    }
+  }
+
+  /* ---- STEP 5 · 1920 ---------------------------------------------
+     The detail ramp takes its first step here, one point on each of
+     the three sizes. Nothing else in the ramp has moved since 390. */
+  @media (width >= 120rem) {
+    :root {
+      --text-mission-title: 4.375rem;  /* 70 */
+      --text-mission-title--letter-spacing: -0.018em;
+      --text-file: 0.75rem;            /* 12 */
+      --text-file-s: 0.6875rem;        /* 11 */
+      --text-file-xs: 0.625rem;        /* 10 */
+      --file-head-air: 128px;
+      --file-section-gap: 136px;
+      --file-row-gap: 14px;
+      --file-meta-col: 10.5rem;
+      --doc-cut: 40px;
+      --doc-pad: 44px;
+    }
+  }
+
+  /* ---- STEP 6 · 2400 --------------------------------------------- */
+  @media (width >= 150rem) {
+    :root {
+      --text-mission-title: 4.875rem;  /* 78 — the cap */
+      --text-mission-title--letter-spacing: -0.02em;
+      --text-file: 0.8125rem;          /* 13 */
+      --text-file-s: 0.75rem;          /* 12 */
+      --text-file-xs: 0.6875rem;       /* 11 */
+      --file-head-air: 152px;
+      --file-section-gap: 160px;
+      --file-row-gap: 16px;
+      --file-meta-col: 11.5rem;
+      --doc-cut: 48px;
+      --doc-pad: 52px;
+    }
+  }
+}
+
+/* ==================================================================
+   THE MISSION FILE — classes
+   ================================================================== */
+
+@layer components {
+  /* ---------------------------------------------------------------
+     DETAIL TYPE
+     Three sizes, one face, one job: facts. Compose with `.file-label`
+     when the string is a LABEL rather than a reading —
+     `class="file-s file-label"` — which uppercases it, opens the
+     tracking a further 0.03em and takes the ink down to `--ink-dim`.
+
+     Colour is deliberately INHERITED on the three sizes so a detail
+     string picks up whatever ink the block around it is set in and
+     works on both halves of the poster. `.file-xs` is the exception:
+     it pins itself to `--ink-dim` (see the contrast table above) and
+     has to be overridden explicitly to go anywhere else.
+
+     `font-variant-numeric: tabular-nums` on all three — every number
+     on this page is a reading that will be replaced by another
+     reading while someone is looking at it, and a column of figures
+     that reflows on each poll is a bug.
+     --------------------------------------------------------------- */
+  .file {
+    --file-track-label: 0.09em;
+    font-family: var(--font-typestar);
+    font-size: var(--text-file);
+    line-height: var(--text-file--line-height);
+    letter-spacing: var(--text-file--letter-spacing);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .file-s {
+    --file-track-label: 0.1em;
+    font-family: var(--font-typestar);
+    font-size: var(--text-file-s);
+    line-height: var(--text-file-s--line-height);
+    letter-spacing: var(--text-file-s--letter-spacing);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .file-xs {
+    --file-track-label: 0.12em;
+    font-family: var(--font-typestar);
+    font-size: var(--text-file-xs);
+    line-height: var(--text-file-xs--line-height);
+    letter-spacing: var(--text-file-xs--letter-spacing);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-dim);
+  }
+
+  /* The label modifier. Uppercase, more tracking, dim ink. A label is a
+     heading for a value, not a value.
+
+     The tracking follows the size it is PAIRED with, not a fixed number
+     and not the middle size's number: each of the three classes above
+     publishes a `--file-track-label` and this reads it, so `file-xs
+     file-label` gets 0.12em and `file file-label` gets 0.09em. Small
+     caps need more air than large ones, and a label modifier that
+     ignored which size it was modifying would be wrong at two of the
+     three. The fallback is the middle value for a bare `.file-label`. */
+  .file-label {
+    text-transform: uppercase;
+    letter-spacing: var(--file-track-label, 0.1em);
+    color: var(--ink-dim);
+  }
+
+  /* A label that has to hold its own against a heading. Same size and
+     tracking, full ink. */
+  .file-label-strong {
+    text-transform: uppercase;
+    letter-spacing: var(--file-track-label, 0.1em);
+    color: var(--ink);
+  }
+
+  /* ---------------------------------------------------------------
+     DISPLAY TYPE — Ductile, uppercased at the class so the caps-only
+     glyph set can never fall halfway through a word into Inter.
+     --------------------------------------------------------------- */
+  .mission-title {
+    font-family: var(--font-ductile);
+    font-size: var(--text-mission-title);
+    line-height: var(--text-mission-title--line-height);
+    letter-spacing: var(--text-mission-title--letter-spacing);
+    font-weight: 400;
+    text-transform: uppercase;
+    text-wrap: balance;
+    /* Backstop only. A word wider than the column breaks rather than
+       running out of it; at 28px base it takes a 12-letter word to get
+       there, and an overflowing headline is worse than a broken one. */
+    overflow-wrap: break-word;
+  }
+
+  /* The `MISSION / 32BF` lockup. The word is a label and stays small;
+     the code is the display element. Sizes are set by the component
+     (<MissionRef />) so the two parts can keep their own ramp. */
+  .mission-lockup {
+    font-family: var(--font-ductile);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A very large numeral used as a graphic element beside a numbered
+     section. It is furniture, not content — the component marks it
+     aria-hidden and the real number is in the heading.
+     56 / 88 / 120 / 136 / 168 / 192. */
+  .numeral-graphic {
+    font-family: var(--font-ductile);
+    font-weight: 400;
+    font-size: 3.5rem;
+    line-height: 0.78;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (width >= 48rem) {
+    .numeral-graphic { font-size: 5.5rem; }
+  }
+  @media (width >= 80rem) {
+    .numeral-graphic { font-size: 7.5rem; }
+  }
+  @media (width >= 90rem) {
+    .numeral-graphic { font-size: 8.5rem; }
+  }
+  @media (width >= 120rem) {
+    .numeral-graphic { font-size: 10.5rem; }
+  }
+  @media (width >= 150rem) {
+    .numeral-graphic { font-size: 12rem; }
+  }
+
+  /* ---------------------------------------------------------------
+     THE DOCUMENT PANEL
+     ---------------------------------------------------------------
+     Printed or archived content — a record rather than an interface.
+     Paper ground, dark ink, and a cut top-right corner as on a
+     physical file. It carries `.surface-light` alongside it, which is
+     what supplies `--ground` / `--ink` / `--rule`; this class is only
+     the shape.
+
+     HOW THE CORNER IS CUT. `clip-path` removes the triangle, so the
+     page ground shows through it rather than a fill being painted
+     over the panel — which is what makes it read as a cut rather than
+     as a decoration, and what lets it sit on a photograph.
+
+     The hairline along the cut is drawn as a background layer, not as
+     a pseudo-element, because a pseudo-element is clipped by the same
+     path and would lose half its width to antialiasing on the
+     boundary. The gradient runs `to bottom left`, whose iso-lines run
+     top-left→bottom-right, i.e. exactly along the cut; the band is
+     placed a fraction PAST the 50% centre line so it sits just inside
+     the clip and survives at every device pixel ratio.
+
+     `border` on the three straight sides is honest here: it is
+     clipped where the corner is gone, so the rule stops at the cut
+     the way a printed rule would.
+     --------------------------------------------------------------- */
+  .doc-panel {
+    position: relative;
+    padding: var(--doc-pad);
+    border: 1px solid var(--rule);
+    background-color: var(--ground);
+    background-image: linear-gradient(
+      to bottom left,
+      transparent 0 calc(50% + 0.2px),
+      var(--rule-strong) calc(50% + 0.2px) calc(50% + 1.4px),
+      transparent calc(50% + 1.4px)
+    );
+    background-repeat: no-repeat;
+    background-position: top right;
+    background-size: var(--doc-cut) var(--doc-cut);
+    clip-path: polygon(
+      0 0,
+      calc(100% - var(--doc-cut)) 0,
+      100% var(--doc-cut),
+      100% 100%,
+      0 100%
+    );
+    color: var(--ink);
+  }
+
+  /* Anything on the panel's first line has to clear the cut. Put this
+     on the row that sits at the top right of a panel. */
+  .doc-panel-clear {
+    padding-right: var(--doc-cut);
+  }
+
+  /* ---------------------------------------------------------------
+     SECTION TABS
+     A row of labels on a full-width 1px rule, the active one carrying
+     its own 1px underline sitting ON that rule. No pill, no fill, no
+     rounded background — the underline IS the state.
+
+     `--rule` and `--ink` mean the row inverts with the band it is in.
+     --------------------------------------------------------------- */
+  /* TWO ELEMENTS, and the reason is the 390px case.
+
+     The rule has to be FULL WIDTH and the active underline has to land
+     exactly ON it — not 1px above it, and not on a second rule. That
+     means the underline lives 1px outside its own tab's box. It also
+     means the row must not WRAP: a wrapped row puts the container's
+     rule under the last line and leaves the active underline floating
+     in the middle of the block, which is what four tabs of two words
+     do at 390px.
+
+     So the row scrolls instead of wrapping — and a scroll container
+     clips on BOTH axes, which would eat the underline. The rail solves
+     both: the RAIL owns the rule and does not scroll, the ROW scrolls
+     and is pulled 1px down over the rail's border by a negative
+     margin, with 1px of padding-bottom putting that same band back
+     inside its own padding box. The underline therefore sits exactly
+     on the rule and is never clipped, at any number of tabs. */
+  .tab-rail {
+    position: relative;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .tab-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 1.25rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 1px;
+    margin-bottom: -1px;
+    /* The scroller is a 390 affordance, not a scrollbar. */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .tab-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* The gap opens with the viewport like every other gap in the system.
+     20 / 28 / 36 / 44 — four two-word tabs sit on one line from 768 up
+     and scroll below it. */
+  @media (width >= 48rem) {
+    .tab-row { gap: 1.75rem; }
+  }
+  @media (width >= 80rem) {
+    .tab-row { gap: 2.25rem; }
+  }
+  @media (width >= 120rem) {
+    .tab-row { gap: 2.75rem; }
+  }
+
+  .tab-item {
+    position: relative;
+    /* 44px minimum target on touch widths — the underline sits at the
+       bottom of the box, so the padding is what makes it tappable
+       without moving the rule. */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding-block: 0.5rem;
+    color: var(--ink-dim);
+    white-space: nowrap;
+    transition: color var(--duration-house) var(--ease-house);
+  }
+
+  .tab-item::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 1px;
+    background-color: var(--ink);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--duration-house) var(--ease-house);
+  }
+
+  .tab-item:hover,
+  .tab-item:focus-visible {
+    color: var(--ink);
+  }
+
+  /* The focus ring moves to the LABEL rather than the tab box. The tab
+     box's own ring would be drawn 2px outside a box whose bottom edge
+     is the scroller's content edge, and `overflow-y: hidden` would cut
+     the bottom off it. The label is vertically centred inside a 44px
+     target, so a ring around the label sits comfortably inside the
+     scroller and is never clipped. The ring itself is unchanged —
+     same width, same `--focus-ring`, which follows the ground. */
+  .tab-item:focus-visible {
+    outline: none;
+  }
+
+  .tab-item:focus-visible > * {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  .tab-item[aria-selected="true"],
+  .tab-item[aria-current="page"],
+  .tab-item[data-active="true"] {
+    color: var(--ink);
+  }
+
+  .tab-item[aria-selected="true"]::after,
+  .tab-item[aria-current="page"]::after,
+  .tab-item[data-active="true"]::after {
+    transform: scaleX(1);
+  }
+
+  /* ---------------------------------------------------------------
+     THE RULED DATA ROW
+     A 1px rule above each row, the label above the value, the value
+     in the lighter of the two weights. Not a dotted-leader table:
+     a leader is for a price list, and this is a record.
+
+     Typestar ships one weight, so "lighter" is carried by the pair
+     the way a document does it — the LABEL is the marked one
+     (uppercase, tracked, dim) and the VALUE is plain (mixed case or
+     figures, untracked, full ink at 400). Set them the other way
+     round and the page reads as a form.
+     --------------------------------------------------------------- */
+  .rule-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    border-top: 1px solid var(--rule);
+    padding-block: var(--file-row-gap) calc(var(--file-row-gap) + 0.25rem);
+  }
+
+  /* The last row closes the stack, so a block of rows is bounded top
+     and bottom rather than trailing off. */
+  .rule-stack > .rule-row:last-child {
+    border-bottom: 1px solid var(--rule);
+  }
+}
+
+/* ==================================================================
+   THE SITE BAR — a floating pill, not a full-width bar
+   ==================================================================
+   Transcribed from the reference's own computed styles and kept to
+   the number: `inline-flex` (so the plate hugs its content and the
+   page shows through around it), `rgb(0 0 0 / .1)` over
+   `backdrop-filter: blur(25px)`, 13px / 15px of padding, 109px
+   between the lockup and the nav, 37px between links, 12px uppercase
+   mono at +0.12px, one breakpoint at 1024px, and the plate GROWING
+   INTO the mobile panel in place rather than sliding a drawer in from
+   the side.
+
+   Two things this deliberately does NOT do, because they are two of
+   the three documented ways the design gets built wrong:
+     1. a 100%-wide bar with a background — `display: inline-flex` and
+        `margin-inline: auto` are what stop that;
+     2. a per-link hover highlight — the list DIMS and the hovered
+        item stays lit (`.site-nav-list:hover .site-nav-link`).
+   The third — the radius — is the one place the owner has overruled
+   the reference outright. See the note on `border-radius` below.
+
+   Three numbers are ours rather than theirs, all for cause, all
+   measured:
+     · the group dim is 85%, not 60%. 60% of `--ink-dim` over
+       `--ground` measures 2.80:1 on paper and 3.02:1 on void; both
+       are AA failures and this bar does not choose its ground. 85%
+       measures 4.87:1 on paper and 5.67:1 on void and the gesture
+       still reads, because the dim never carried it alone — the
+       hovered item also moves from `--ink-dim` to `--ink`.
+     · every interactive box in the plate is at least 44px in its
+       smaller dimension. Their 12px link is a 12px hit target. Ours
+       is the same 12px mark inside a 44px box, and the box carries
+       NO inline padding, so the measured gap between two links is
+       still exactly 37px.
+     · the radius is 12px, not their 3px. That one is an instruction
+       from the owner rather than a measurement, and the reasoning
+       for the specific number is on the property itself.
+
+   The plate's height therefore lands at 70px (44 + 13 + 13) and the
+   header at 90px (70 + 20) rather than their 65px. That is the a11y
+   floor spending 26px, and it is the only place the geometry gives.
+   ================================================================== */
+
+@layer components {
+  /* ---------------------------------------------------------------
+     THE BAR PUBLISHES ITS OWN HEIGHT.
+     The bar is `absolute`, so it takes no vertical space and anything
+     that opens at y = 0 renders underneath it. Before this, three
+     files answered that by hard-coding a copy of the bar's height
+     (68 / 72 / 76 / 88 / 96 …) and every one of them went stale the
+     moment the bar changed. There is now one number, stated where the
+     bar is built: `padding-block-start: var(--site-bar-h)` and a page
+     opens exactly where the bar ends, forever.
+
+       70px  ≤ 1024 — flush to the top edge, 13 + 44 + 13
+       90px  > 1024 — the same plate, floating on its 20px inset
+     --------------------------------------------------------------- */
+  :root {
+    --site-bar-h: 70px;
+  }
+
+  @media (width > 1024px) {
+    :root {
+      --site-bar-h: 90px;
+    }
+  }
+
+  /* THE OPENING RESERVE — the bar plus the announcement strip that sits
+     directly under it on the landing page. A full-bleed opening runs its
+     PICTURE to y = 0, under both, and reserves this for its COPY. One
+     token, so the picture and the copy can never disagree about where
+     the chrome ends. 48px is the strip's 44px row plus its 4px of air. */
+  :root {
+    --site-open-h: calc(var(--site-bar-h) + 48px);
+  }
+
+  /* ---------------------------------------------------------------
+     THE SHELL — transparent, and load-bearingly so.
+     `pointer-events: none` on the shell and `auto` on its children is
+     what lets the page be clicked through the empty space either side
+     of the plate. A transparent 90px band that eats clicks is a
+     full-width bar wearing a disguise.
+     --------------------------------------------------------------- */
+  .site-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-block: 20px 0;
+    padding-inline: max(20px, env(safe-area-inset-left, 0px))
+      max(20px, env(safe-area-inset-right, 0px));
+    background: transparent;
+    pointer-events: none;
+    transition: padding 0.5s cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+
+  .site-bar > * {
+    pointer-events: auto;
+  }
+
+  /* ---------------------------------------------------------------
+     THE PLATE
+     --------------------------------------------------------------- */
+  .site-bar-pill {
+    position: relative;
+    display: inline-flex;
+    flex-flow: row nowrap;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 109px;
+    margin-inline: auto;
+    max-width: 100%;
+    min-width: 0;
+    padding: 13px 15px;
+    /* ROUND CORNERS — the one place the reference is overruled.
+       ---------------------------------------------------------------
+       The spec is emphatic about 3px (§8.3: "Rounding it into a
+       lozenge … It is a rectangle with the corners taken off, not a
+       pill shape"), and it was built at 3px. The owner has asked for
+       round corners, so this is 12px. The number was picked by
+       rendering the plate at 3 / 8 / 10 / 12 / 14 / 16 / 20 / 35 and
+       looking at all eight, not by taste.
+
+       WHY NOT A FULL PILL (35px). The plate is 70px tall, so a
+       stadium radius is 35px, and at 35px the plate HAS NO STRAIGHT
+       LEFT OR RIGHT EDGE LEFT — the caps consume 100% of both short
+       sides and 14% of the perimeter, against 1.2% at 3px. Two
+       specific things break with it, and both were screenshotted
+       before this was chosen:
+         · The action is a 44px slab with its own 3px corners, inset
+           15px from the right edge and 13px from the top and bottom.
+           Inside a 35px cap it is a square object floating in a
+           semicircle, with a large crescent of bare ground at each of
+           its outer corners. It reads as unresolved, not as round.
+         · Below 1024px this plate is full width and 70px tall, and it
+           MORPHS to `border-radius: 0` as it becomes the panel. From
+           35px that is a silhouette change; from 12px it is a settle.
+       And `--radius-pill` (999px) is scoped by name in this file to
+       status tokens and the meta strip, for the reason that a pill on
+       a surface reads as a web-app widget. A 717 x 70 stadium is the
+       largest possible version of exactly that.
+
+       WHY 12 AND NOT 16. 16px is the CONCENTRIC value — the action's
+       3px corner plus its 13px block inset — so at 16 the plate's arc
+       runs parallel to the button's. It is defensible, and it is one
+       step too soft on a 70px object: 16/70 is 23% of the short side,
+       and 16px is also `--radius-deck`, which this file states is not
+       a size ramp and is scoped to two components. Reusing the value
+       here would quietly turn that exception into a scale.
+
+       12px is 17% of the plate's short side, 4x the control radius —
+       so the plate reads as the CONTAINER of the buttons in it rather
+       than as a sibling of them, which is what makes nesting look
+       right — and it stops short of the concentric point where the
+       square action starts to look stranded in the corner. It is
+       unmistakably round at a glance, which is the instruction, and
+       it is still an edge you could machine.
+
+       Everything else on the plate is unchanged and stays measured:
+       auto width (717px at 1440), blur(25px), the two ground tints,
+       13px 15px, 109px, 37px, and the panel radius of 0. */
+    border-radius: 12px;
+    background-color: rgb(0 0 0 / 0.1);
+    -webkit-backdrop-filter: blur(25px);
+    backdrop-filter: blur(25px);
+    /* THE ONE ADDITION TO THE SPEC, and it is the spec's own caveat
+       answered. `backdrop-filter` needs something behind it to blur;
+       over a FLAT ground it degrades to a plain 10% tint, and 10% of
+       black over #08090b is nothing at all — measured, the plate over
+       the homepage's opening band was invisible, so the design read as
+       three links loose on a page rather than as a floating capsule.
+       One hairline gives it an edge on any ground.
+
+       `outline` rather than `border` on purpose: an outline is drawn
+       outside the box model, so the padding still measures 13px 15px,
+       the plate still measures 70px tall, and the radius is still the
+       one the spec names. A border would have taken 1px off each of
+       them. */
+    outline: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+    outline-offset: -1px;
+    /* Forces GPU compositing so the blur does not judder while the
+       page scrolls under it. Theirs, unchanged. */
+    transform: translateZ(0);
+    transition:
+      background-color 0.4s ease,
+      height 0.5s cubic-bezier(0.215, 0.61, 0.355, 1),
+      padding 0.5s cubic-bezier(0.215, 0.61, 0.355, 1),
+      border-radius 0.5s cubic-bezier(0.215, 0.61, 0.355, 1),
+      -webkit-backdrop-filter 0.5s cubic-bezier(0.215, 0.61, 0.355, 1),
+      backdrop-filter 0.5s cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+
+  /* The light theme. Driven by the ground SAMPLER on <SiteHeader />,
+     not by a static prop: the bar reads the pixels beneath itself per
+     route and per resize, so a page does not have to declare anything
+     to be handled correctly. */
+  [data-header-ground='light'] .site-bar-pill {
+    background-color: rgb(255 255 255 / 0.4);
+  }
+
+  /* A SPLIT ground — `/mission`'s paper column beside its void panel
+     is the case that exists today. The plate spans two grounds, no
+     single ink clears AA across it, and a 10% wash cannot rescue
+     either half. So the plate stops being translucent and DECLARES a
+     ground. This is the one state in which it is an opaque object
+     rather than a wash, and it is an accessibility floor, not a
+     style. */
+  [data-header-split] .site-bar-pill {
+    background-color: color-mix(in srgb, var(--ground) 94%, transparent);
+  }
+
+  /* SCROLLED — the same accessibility floor, for the same reason.
+     The bar is `fixed`, so once the page moves it is no longer floating
+     over the page's own opening: it is floating over running content,
+     which can be anything. A 10% wash over a headline is illegible in
+     both directions, and the scrim that used to rescue it has been
+     faded out (it fogged the text it was passing over).
+
+     So from 24px of scroll the plate stops being translucent and
+     declares a ground, exactly as it does on a split. The blur stays —
+     it is what keeps the plate reading as glass rather than as a chip —
+     but it now blurs behind an opaque face, so the effect is the edge
+     highlight rather than the wash.
+
+     94%, not 100%: a hair of the page still shows through, which is the
+     difference between a floating plate and a docked bar, and at 94%
+     the worst case measured is still an AA pass. */
+  [data-header-scrolled] .site-bar-pill {
+    background-color: color-mix(in srgb, var(--ground) 94%, transparent);
+  }
+
+  .site-bar-a {
+    display: flex;
+    align-items: center;
+  }
+
+  .site-bar-lockup {
+    display: inline-flex;
+    align-items: center;
+    /* The 40px lockup is a 40px hit box on its own; the padding lifts
+       it over the 44px floor without moving its optical line.
+
+       `min-height` because the padding alone is not enough at every
+       width: the mark steps DOWN to 36px below 360 (`h-9
+       min-[360px]:h-10` on <Wordmark /> in SiteHeader), and 36 + 2 + 2
+       measures 40 — a tap target under the floor at 320, which is one
+       of the widths this product is tested at. A floor is the fix that
+       cannot go stale the next time the mark is resized: the box
+       centres its contents, so the lockup grows into height the 70px
+       plate already reserves and the optical line does not move. */
+    min-height: 44px;
+    padding-block: 2px;
+    margin-block: -2px;
+    color: var(--ink);
+    transition: opacity var(--duration-house) var(--ease-house);
+  }
+
+  /* ---------------------------------------------------------------
+     THE SECOND CELL — the destinations, and the one thing the
+     reference does not have.
+     ---------------------------------------------------------------
+     The spec says three elements, do not add a fourth. This site
+     sells, and `Start a mission` has to be in the first viewport at
+     every width on every route. So the plate still has TWO cells
+     either side of the 109px gap; the action joins the second one and
+     takes the LIST's own rhythm — 37px, the same gap that separates
+     two links. It is a terminal item in the same measure rather than
+     a fourth element at a fourth distance, which is what would have
+     broken the 109px reading.
+     --------------------------------------------------------------- */
+  .site-bar-b {
+    display: flex;
+    align-items: center;
+    gap: 37px;
+  }
+
+  .site-nav {
+    display: flex;
+    align-items: center;
+  }
+
+  .site-nav-list {
+    display: flex;
+    align-items: center;
+    gap: 37px;
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .site-nav-list > li {
+    display: flex;
+  }
+
+  .site-nav-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* The 44px box. NO inline padding — that is what keeps the
+       measured gap between two links at exactly 37px. */
+    min-width: 44px;
+    min-height: 44px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    /* +0.12px. Theirs, transcribed — note this is PX, roughly a
+       hundredth of an em, not the 0.12em the rest of this system
+       tracks its labels by. */
+    letter-spacing: 0.12px;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--ink-dim);
+    opacity: 1;
+    transition:
+      opacity 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      color 0.4s ease;
+  }
+
+  .site-nav-link[aria-current='page'] {
+    color: var(--ink);
+  }
+
+  /* The current page is MARKED, not coloured — a 1px accent rule under
+     the label, the same mark the telemetry layer uses for a live
+     channel. `--accent`, not `--color-signal`: on paper the bright
+     orange is 2.83:1 and the ground contract hands over the darker
+     ink accent. */
+  .site-nav-link::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 12px;
+    height: 1px;
+    background-color: var(--accent);
+    opacity: 0;
+    transition: opacity var(--duration-house) var(--ease-house);
+  }
+
+  .site-nav-link[aria-current='page']::after {
+    opacity: 1;
+  }
+
+  /* THE GROUP DIM — the distinctive part, and the inverse of the
+     obvious build. Hovering the list dims EVERY item; the one under
+     the cursor comes back. The `!important` is the reference's own
+     note: both rules apply to the hovered link at once and without it
+     the dim wins. */
+  @media (hover: hover) {
+    .site-nav-list:hover .site-nav-link {
+      opacity: 0.85;
+    }
+
+    .site-nav-list .site-nav-link:hover {
+      opacity: 1 !important;
+      color: var(--ink);
+    }
+
+    .site-bar-lockup:hover {
+      opacity: 0.8;
+    }
+  }
+
+  /* Keyboard parity: a focused link is never one of the dimmed ones. */
+  .site-nav-list .site-nav-link:focus-visible {
+    opacity: 1 !important;
+    color: var(--ink);
+  }
+
+  /* ---------------------------------------------------------------
+     THE DISCLOSURE TRIGGER — an 18px mark inside a 44px box.
+     Theirs is an 18px box, which is 40% of the tap floor.
+     --------------------------------------------------------------- */
+  .site-bar-trigger {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+    border-radius: var(--radius-action);
+    color: var(--ink-dim);
+    background-color: transparent;
+    transition:
+      color var(--duration-house) var(--ease-house),
+      border-color var(--duration-house) var(--ease-house),
+      background-color var(--duration-house) var(--ease-house);
+  }
+
+  @media (hover: hover) {
+    .site-bar-trigger:hover {
+      border-color: color-mix(in srgb, var(--ink) 50%, transparent);
+      background-color: color-mix(in srgb, var(--ink) 6%, transparent);
+      color: var(--ink);
+    }
+  }
+
+  /* ---------------------------------------------------------------
+     ONE BREAKPOINT, AT EXACTLY 1024px.
+     Not Tailwind's `lg` (1024 MIN-width) and not Webflow's 991 —
+     `max-width: 1024px`, so 1024 is the panel and 1025 is the plate.
+     --------------------------------------------------------------- */
+  @media (width <= 1024px) {
+    .site-bar {
+      padding-inline: max(24px, env(safe-area-inset-left, 0px))
+        max(24px, env(safe-area-inset-right, 0px));
+      /* THE 20px TOP INSET IS SPENT HERE, and this is the one measured
+         deviation from the spec's header padding.
+
+         Below the breakpoint the plate is no longer a floating capsule
+         — the spec itself gives it `width: 100%` — so the inset is
+         buying a 20px strip of page above a full-width bar rather than
+         the "content visible around it" the design is about. It costs
+         more than that: our plate is 70px tall where theirs is 44,
+         because every control in it clears the 44px tap floor, and the
+         pages below reserve the header's height as a hard number in
+         files this component does not own (`AnnounceBand` reserves
+         68px, `PreviewStage` 72px). At 20 + 70 = 90px the bar cuts
+         into both. At 0 + 70 = 70px it clears both, and the plate sits
+         on the top edge where a phone expects a bar.
+
+         Above the breakpoint the 20px is untouched and the capsule
+         floats, which is where the idea actually lives. */
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    .site-bar-pill {
+      position: relative;
+      width: 100%;
+      /* Stated, not inherited from the content, because `auto` has no
+         from-value to animate out of when the plate becomes the
+         panel. 44 (the tap floor) + 13 + 13. */
+      height: 70px;
+      /* The 109px gap is a DESKTOP measurement — it separates a lockup
+         from a nav that is not rendered here. Below the breakpoint the
+         plate is full width and `space-between` does the work; the gap
+         drops to a floor that keeps the lockup off the action. */
+      gap: 12px;
+    }
+
+    /* 37px is the LIST's rhythm and there is no list here — below the
+       breakpoint the second cell is the action and the disclosure, two
+       44px targets in the corner of the screen a thumb is least
+       accurate in. 8px is the floor that keeps a mis-tap from either
+       navigating away or opening the index. */
+    .site-bar-b {
+      gap: 8px;
+    }
+
+    .site-nav {
+      display: none !important;
+    }
+
+    .site-bar-trigger {
+      display: inline-flex;
+      margin-left: auto;
+    }
+
+    /* ---------------------------------------------------------------
+       THE OPEN STATE — the plate BECOMES the menu.
+       It does not slide in from the side. The same object grows in
+       place: the shell gives up its padding, the plate goes edge to
+       edge, drops its radius, deepens its blur 25 → 50, and takes the
+       panel's 33 / 39 / 28 padding.
+       --------------------------------------------------------------- */
+    .site-bar[data-open='true'] {
+      padding: 0;
+    }
+
+    .site-bar[data-open='true'] .site-bar-pill {
+      /* Never taller than the viewport: a panel that overshoots a
+         640px phone in landscape puts its own primary action off
+         screen. */
+      height: min(100dvh, max(55vh, 470px));
+      padding-block: 33px calc(28px + env(safe-area-inset-bottom, 0px));
+      padding-left: max(39px, env(safe-area-inset-left, 0px));
+      padding-right: max(39px, env(safe-area-inset-right, 0px));
+      border-radius: 0;
+      /* Edge to edge on three sides, so the only edge left to draw is
+         the one the panel closes on. Without it the panel and the
+         dimmed page behind it are both near-black and the plate loses
+         its bottom. */
+      outline: none;
+      border-bottom: 1px solid var(--rule-strong);
+      -webkit-backdrop-filter: blur(50px);
+      backdrop-filter: blur(50px);
+      /* The row becomes a masthead over a panel. Two columns so the
+         lockup and the close mark stay on the line they were already
+         on, one row that takes the rest. */
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto 1fr;
+      gap: 0;
+      align-items: center;
+      /* The open panel always sits on a dark ground (see the overlay
+         below), so the plate takes the dark tint whatever the page
+         under it is. The `on-dark` class on the element supplies the
+         ink to match. */
+      background-color: rgb(0 0 0 / 0.1);
+    }
+
+    .site-bar[data-open='true'] .site-bar-cta {
+      display: none;
+    }
+
+    .site-bar-panel {
+      grid-column: 1 / -1;
+      display: flex;
+      min-height: 0;
+      flex-direction: column;
+      overflow-y: auto;
+      padding-top: 28px;
+    }
+  }
+
+  /* Above the breakpoint the panel is never rendered; this is only
+     the guard for the frame in which the viewport crosses back. */
+  @media (width > 1024px) {
+    .site-bar-panel {
+      display: none;
+    }
+  }
+
+  /* ---------------------------------------------------------------
+     THE OVERLAY — the page recedes behind the panel.
+     `z-index: -1` puts it behind the plate INSIDE the header's own
+     stacking context, which is also what feeds the plate's
+     backdrop-filter: the 50px blur is blurring this, not the page.
+     --------------------------------------------------------------- */
+  .site-bar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    border: 0;
+    padding: 0;
+    background-color: color-mix(in srgb, var(--color-void) 92%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    cursor: default;
+    transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0s;
+  }
+
+  .site-bar[data-open='true'] .site-bar-overlay {
+    opacity: 1;
+    pointer-events: auto;
+    /* Starts after the plate has begun to grow, so the page dims
+       BECAUSE the panel opened rather than at the same instant. */
+    transition-delay: 0.3s;
+  }
+
+  /* ---------------------------------------------------------------
+     INSIDE THE PANEL
+     --------------------------------------------------------------- */
+  .site-panel-nav {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+    gap: 28px;
+  }
+
+  .site-panel-link {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.9375rem; /* 15 — a thumb is not a pointer */
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.12px;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--ink-dim);
+    transition: color 0.4s ease;
+  }
+
+  .site-panel-link[aria-current='page'] {
+    color: var(--ink);
+  }
+
+  .site-panel-mark {
+    flex-shrink: 0;
+    padding-top: 28px;
+    color: var(--ink);
+    /* The reference closes its panel with the wordmark stretched to
+       the content width. Theirs is a 7.3:1 horizontal lockup; ours is
+       2.8:1 and stacked, so at full width it would be 118px tall and
+       overrun the panel. The gesture is kept and the scale is ours —
+       a watermark, not a second logo. */
+    opacity: 0.25;
+  }
 }

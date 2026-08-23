@@ -1,0 +1,198 @@
+// SHOT FROM SPACE — data model.
+// SQLite via Prisma so a fresh clone has real, persistent state.
+// SQLite has no native enums; string fields carry the unions declared in
+// lib/types.ts. Keep the two in sync.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A customer. Created lazily from the order email — there is no signup form.
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  missions       Mission[]
+  sessions       Session[]
+  magicLinkTokens MagicLinkToken[]
+}
+
+/// Server-side session, referenced by an httpOnly cookie.
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Single-use magic link. In mock mode the link is printed to the console.
+model MagicLinkToken {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  email      String
+  userId     String?
+  redirectTo String?
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+}
+
+/// An order IS a mission. Single source of truth for the timeline.
+model Mission {
+  id   String @id @default(cuid())
+  /// 2 digits + 2 letters, e.g. "32BF".
+  code String @unique
+  /// Unguessable key for the read-only shared view.
+  shareToken String @unique
+
+  /// MissionState from lib/types.ts.
+  state           String   @default("MISSION_CONFIRMED")
+  stateEnteredAt  DateTime @default(now())
+
+  // --- Customer -------------------------------------------------
+  email  String
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // --- Target ---------------------------------------------------
+  addressLine1  String
+  addressLine2  String?
+  city          String
+  adminArea     String?
+  postalCode    String
+  countryCode   String
+  country       String
+  lat           Float
+  lon           Float
+  /// City-level label safe for public display, e.g. "LOS ANGELES, CA / US".
+  locationLabel String
+
+  // --- Product --------------------------------------------------
+  formatId    String
+  frame       String
+  printRegion String
+  amountMinor Int
+  currency    String
+  /// Side length of the capture footprint in km, chosen at /start.
+  areaKm      Float  @default(1.2)
+
+  // --- Dedication -----------------------------------------------
+  /// "What is this place?", in the customer's own words. Printed on the
+  /// mission sheet. Free text, so it is written and read only through
+  /// lib/missions/dedication.ts — see that file for why. Personal: it is an
+  /// owner-gated field on MissionDTO, never on a public or shared view.
+  dedication  String?
+
+  // --- Payment --------------------------------------------------
+  stripeSessionId       String?
+  stripePaymentIntentId String?
+  paidAt                DateTime?
+  receiptNumber         String?
+
+  // --- Tasking / capture ---------------------------------------
+  skyfiOrderId   String?
+  windowOpensAt  DateTime?
+  windowClosesAt DateTime?
+  capturedAt     DateTime?
+  /// Which catalogue frame backs this mission's imagery in mock mode.
+  imagerySlug    String?
+  previewUrl     String?
+  deliverableUrl String?
+
+  // --- Orbit / pass telemetry ----------------------------------
+  sensor       String @default("SKYFI-HR / OPTICAL")
+  inclination  String @default("SSO 97.4°")
+  track        String @default("//ELIPSE 33°")
+  altitudeKm   Int    @default(512)
+  gsdM         Float  @default(0.5)
+  azimuthDeg   Int    @default(104)
+  offNadirDeg  Float  @default(4.2)
+  cloudPct     Int    @default(6)
+
+  // --- Production / fulfilment ---------------------------------
+  gelatoOrderId       String?
+  printFacility       String?
+  carrier             String?
+  trackingNumber      String?
+  trackingUrl         String?
+  estimatedDeliveryAt DateTime?
+
+  // --- Flags ----------------------------------------------------
+  /// Seeded demo missions. Shown in the discovery gallery.
+  isDemo    Boolean @default(false)
+  /// Opted into the public gallery.
+  isPublic  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events   MissionEvent[]
+  messages CommsMessage[]
+  emails   EmailLog[]
+
+  @@index([email])
+  @@index([userId])
+  @@index([state])
+}
+
+/// Append-only mission log. The timeline is rendered from these rows.
+model MissionEvent {
+  id        String   @id @default(cuid())
+  missionId String
+  /// A MissionStage, or "NOTE" for non-stage entries.
+  stage     String
+  label     String
+  detail    String?
+  at        DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([missionId, at])
+}
+
+/// MISSION COMMS transcript.
+model CommsMessage {
+  id        String   @id @default(cuid())
+  missionId String
+  /// OPERATOR | CUSTOMER | SYSTEM
+  role      String
+  body      String
+  at        DateTime @default(now())
+
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([missionId, at])
+}
+
+/// Every transactional email, mocked or sent. Renders the account "comms" log.
+model EmailLog {
+  id        String   @id @default(cuid())
+  missionId String?
+  to        String
+  template  String
+  subject   String
+  bodyText  String
+  bodyHtml  String?
+  provider  String   @default("mock")
+  sentAt    DateTime @default(now())
+
+  mission Mission? @relation(fields: [missionId], references: [id], onDelete: SetNull)
+
+  @@index([missionId])
+}
