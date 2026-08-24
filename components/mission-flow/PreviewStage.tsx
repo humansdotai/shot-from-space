@@ -303,6 +303,14 @@ export function PreviewStage({
       <div
         aria-hidden
         className={cn(
+          // NAMED, so `/mission` can take it out on the stacked phone
+          // shape. This band exists to keep the site bar legible where a
+          // stage sits at the TOP OF THE VIEWPORT, which is true of every
+          // stage in the split layout. Stacked, the stages are spread
+          // down a scrolling document and none of them is under the
+          // header, so the band stops being a scrim and becomes a black
+          // bar ruled across the middle of the page.
+          'preview-header-band',
           'pointer-events-none absolute inset-x-0 top-0 z-20 bg-void',
           /* The band that keeps <SiteHeader> legible over this paper column.
              Its height reads --site-bar-h, which the header itself publishes

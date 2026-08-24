@@ -49,23 +49,44 @@ export default function MissionPage() {
         globals.css is shared by five parallel builds and a rule only one
         route needs does not belong in it.
       */}
+      {/*
+        EVERY RULE HERE IS NOW BEHIND `min-width: 1024px`, and that is the
+        whole point of the media query rather than a tidy-up.
+
+        Below 1024 the configurator is one ordinary scrolling document
+        (see THE PHONE SHAPE in `components/mission-flow/Configurator.tsx`).
+        `overflow: hidden` on <html> and a `height: 100dvh` body would make
+        that document unscrollable — the buyer would see the first screen
+        of it and nothing else, with no way to reach the price or the
+        button. The footer comes back for the same reason: a page that
+        scrolls can carry one, and the links in it (terms, privacy) are
+        worth having under a payment.
+      */}
       <style>{`
-        html:has(.mission-configurator) { overflow: hidden; }
-        body:has(.mission-configurator) {
-          display: flex;
-          flex-direction: column;
-          height: 100dvh;
-          overflow: hidden;
-        }
-        body:has(.mission-configurator) > footer { display: none; }
-        body:has(.mission-configurator) > main {
-          display: flex;
-          flex: 1 1 auto;
-          min-height: 0;
-        }
-        body:has(.mission-configurator) > main > * {
-          flex: 1 1 auto;
-          min-height: 0;
+        /* The stage's header scrim belongs to a stage that sits under the
+           site bar. On the stacked phone shape the stages are spread down
+           a document and none of them does — see \`preview-header-band\`
+           in components/mission-flow/PreviewStage.tsx. */
+        .mission-configurator-stacked .preview-header-band { display: none; }
+
+        @media (min-width: 1024px) {
+          html:has(.mission-configurator) { overflow: hidden; }
+          body:has(.mission-configurator) {
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            overflow: hidden;
+          }
+          body:has(.mission-configurator) > footer { display: none; }
+          body:has(.mission-configurator) > main {
+            display: flex;
+            flex: 1 1 auto;
+            min-height: 0;
+          }
+          body:has(.mission-configurator) > main > * {
+            flex: 1 1 auto;
+            min-height: 0;
+          }
         }
       `}</style>
       <main>

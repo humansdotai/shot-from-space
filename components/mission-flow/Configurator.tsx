@@ -27,9 +27,39 @@ import { RULE } from '@/components/purchase/fields';
  * ------------------------------------------------------------------
  *   ≥ 1024   a persistent split. Preview 62–64%, panel 36–38%, both
  *            filling the viewport, panel scrolling internally.
- *   < 1024   preview on top at 46svh and permanently visible, the
- *            section scroller under it, the controls scrolling, and the
- *            foot in the thumb zone with `env(safe-area-inset-bottom)`.
+ *   < 1024   ONE SCROLLING DOCUMENT. See `stacked` below.
+ *
+ * ------------------------------------------------------------------
+ * THE PHONE SHAPE CHANGED, ON THE OWNER'S INSTRUCTION
+ * ------------------------------------------------------------------
+ * It used to be the second half of the rule above: preview pinned on top
+ * at 38–46svh, an internally scrolling control region, and the price and
+ * CTA held in the thumb zone. The owner replaced it:
+ *
+ *   "on mobile make the purchase payment as a scrollable page with all
+ *    the elements on a page with not fixed buttones or components just
+ *    like you have on mapiful.com … on mobile the purchase page should
+ *    have white background and black text."
+ *
+ * So below 1024 there is now ONE ordinary document that scrolls, every
+ * section stacked down it in order, nothing pinned and nothing sticky,
+ * on paper with black type. The price and the primary action are the
+ * last things in the document rather than a bar over it.
+ *
+ * THIS IS A DELIBERATE DEPARTURE FROM CONFIGURATOR.md §3.1, which says
+ * the primary action must be visible without scrolling at every width.
+ * That rule was written against a TABBED wizard, where an action below
+ * the fold is an action a buyer never learns exists. A single linear
+ * document is a different object: there is one path, the buyer travels
+ * it, and the action sits at the end of it where the decisions finish —
+ * which is why every long-form checkout in the category works this way.
+ * The rule still holds in full at ≥ 1024, where the split makes the
+ * panel a viewport of its own.
+ *
+ * Measured on the reference the owner named: mapiful.com's editor at
+ * 390px is a 3819px document, i.e. one long scroll with every option
+ * group stacked. Their tab rail and their ADD TO CART bar are `sticky`;
+ * ours are not, because the instruction was explicit about that.
  *
  * The split starts at 1024 and not at 768 deliberately. At 768 a 38%
  * panel is 292px, which is narrower than the phone layout it replaced —
@@ -58,6 +88,7 @@ export function Configurator({
   rail,
   foot,
   children,
+  stacked = false,
 }: {
   /**
    * Which section is open. Only used to put the panel back to the top
@@ -78,12 +109,47 @@ export function Configurator({
   foot: ReactNode;
   /** The active section's controls. */
   children: ReactNode;
+  /**
+   * Below 1024. One scrolling document, nothing pinned, paper ground —
+   * see THE PHONE SHAPE above. When true `preview`, `rail` and `foot`
+   * are IGNORED here: the caller has already placed them in `children`,
+   * in reading order, because in a linear document their position is
+   * part of the content rather than part of the frame.
+   */
+  stacked?: boolean;
 }) {
   const scroller = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
+    // The stacked document has no scroller of its own — it IS the
+    // document — and it must not be scrolled to the top when the section
+    // changes, because on that shape the section changes as a RESULT of
+    // the buyer scrolling.
+    if (stacked) return;
     const el = scroller.current;
     if (el) el.scrollTop = 0;
-  }, [sectionKey]);
+  }, [sectionKey, stacked]);
+
+  if (stacked) {
+    return (
+      <div
+        className={cn(
+          // The class the `:has()` rule in `app/mission/page.tsx` looks
+          // for. It is still here, and that rule is now scoped to
+          // `min-width: 1024px` — a document that scrolls must keep its
+          // footer and must not have `overflow: hidden` put on it.
+          'mission-configurator mission-configurator-stacked',
+          // PAPER, AND BLACK TYPE. `surface-light` flips every token —
+          // ground, ink, rules, accent — so every control inside inherits
+          // the inversion without a single one of them being told about
+          // it. This is the same mechanism <PreviewStage /> already uses
+          // for the object column at every width.
+          'surface-light w-full bg-[color:var(--ground)] text-[color:var(--ink)]',
+        )}
+      >
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div

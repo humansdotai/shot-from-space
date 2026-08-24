@@ -52,7 +52,35 @@ CanvasDiscount. Every one of them, without exception, uses the same model.
   earlier decision without losing the later ones.
 - The preview **updates on every change**, immediately.
 
-### Mobile — preview above, controls below, CTA in the thumb zone
+### Mobile — SUPERSEDED. One scrolling document.
+
+**The owner replaced this shape on 2026-08-24.** Their instruction:
+
+> "on mobile make the purchase payment as a scrollable page with all the
+> elements on a page with not fixed buttones or components just like you
+> have on mapiful.com … on mobile the purchase page should have white
+> background and black text."
+
+So below 1024 `/mission` is now ONE ordinary scrolling page: every section
+stacked down it in order, nothing fixed and nothing sticky, paper ground
+with black type, and the price and primary action as the last block of the
+document rather than a bar over it.
+
+That is a deliberate departure from §3.1 below 1024, and §3.1 still holds
+in full at 1024 and above. The reasoning: §3.1 was written against a
+TABBED surface, where an action below the fold is an action a buyer never
+learns exists. A single linear document is a different object — one path,
+travelled once, with the action at the end where the decisions finish.
+
+Measured on the reference the owner named: mapiful.com's editor at 390px
+is a 3819px document with every option group stacked. Their tab rail and
+ADD TO CART bar are `sticky`; ours are not, because the instruction was
+explicit. Locked by `tests/e2e/mobile-stacked-configurator.spec.ts`,
+which also asserts the ≥ 1024 split is untouched.
+
+The superseded shape is kept below for the record.
+
+### Mobile (superseded) — preview above, controls below, CTA in the thumb zone
 
 ```
 ┌───────────────────────┐
@@ -82,8 +110,11 @@ whose options the buyer cannot yet evaluate.
 ## 3 · NON-NEGOTIABLE RULES FOR EVERY BUILD
 
 1. **The primary CTA is visible without scrolling, at every step, at every
-   breakpoint.** This is the acceptance test for the whole project. An agent
-   that ships a surface failing this has not done the job.
+   breakpoint ≥ 1024.** This is the acceptance test for the whole project. An
+   agent that ships a surface failing this has not done the job.
+   **Below 1024 on `/mission` this rule is superseded** — see the mobile
+   section above. It still applies to every other surface at every width.
+   Do not "fix" the phone configurator back to a pinned bar.
 2. **The price is visible wherever a CTA is**, and it is the price that will be
    charged — `tierPriceMinor(tier, formatId, frame, currency)` and nothing
    else. Display and charge come from one function; that was a real defect

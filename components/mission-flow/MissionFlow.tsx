@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { clsx as cn } from 'clsx';
-import { INK_DIM } from '@/components/purchase/fields';
+import { INK_DIM, RULE } from '@/components/purchase/fields';
 import { formatPrice, getFormat } from '@/lib/pricing';
 import { earliestFromSearch, PARAM_STEP, targetFromSearch } from '@/lib/mission-flow/entry';
 import {
@@ -100,6 +100,28 @@ import { ConfirmationSection } from './S10Confirmation';
  */
 export function MissionFlow() {
   const [ready, setReady] = useState(false);
+
+  /* --- WHICH SHAPE ------------------------------------------------
+     Below 1024 the configurator is one scrolling document with every
+     section stacked down it — see THE PHONE SHAPE in Configurator.tsx.
+
+     COMPUTED IN THE INITIALISER, NOT IN AN EFFECT, and that matters: an
+     effect runs after paint, so a phone would render the split shape for
+     one frame and then jump. There is no hydration risk in reading
+     `matchMedia` here because this component renders the same
+     "Restoring the mission" placeholder on the server AND on the first
+     client render — `ready` is false in both — so the markup React
+     compares is identical either way. */
+  const [stacked, setStacked] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023.98px)').matches,
+  );
+  useEffect(() => {
+    const q = window.matchMedia('(max-width: 1023.98px)');
+    const sync = () => setStacked(q.matches);
+    sync();
+    q.addEventListener('change', sync);
+    return () => q.removeEventListener('change', sync);
+  }, []);
   const [draft, setDraft] = useState<MissionDraft>(DEFAULT_DRAFT);
   const [section, setSection] = useState<SectionId>('target');
   const [why, setWhy] = useState<WhyAnswer | null>(null);
@@ -355,6 +377,105 @@ export function MissionFlow() {
   const footLabel = `${TIER_COPY[draft.tier].name} · ${getFormat(draft.formatId).metric}`;
   const action = primaryAction();
 
+  /* =================================================================
+     THE PHONE SHAPE — one scrolling document, every section stacked.
+
+     `preview`, `rail` and `foot` are not passed as frame here: in a
+     linear document their position is part of the reading order, so
+     they are placed in `children` where they belong. The tab rail is
+     not rendered at all — there is nothing to switch between when
+     everything is already on the page, and a row of tabs over a
+     document that contains all of them is a control that lies.
+     ================================================================= */
+  if (stacked) {
+    const ids: SectionId[] = draft.missionCode
+      ? (['confirmation'] as SectionId[])
+      : (['target', 'framing', 'mission', 'design', 'window', 'review'] as SectionId[]);
+
+    return (
+      <Configurator
+        stacked
+        sectionKey={section}
+        previewKind={sectionById(section).preview}
+        preview={null}
+        rail={null}
+        foot={null}
+      >
+        {ids.map((id, i) => {
+          const meta = sectionById(id);
+          /* THE PREVIEW IS RENDERED ONLY WHEN IT CHANGES. Three of the
+             six sections share the `poster` stage, and stacking them
+             would print the same poster three times down one page —
+             which reads as a bug, and costs three mounts of the same
+             work. So a stage appears at the first section that uses it
+             and is not repeated by the ones that follow. */
+          const prev = i > 0 ? sectionById(ids[i - 1]).preview : null;
+          const showPreview = meta.preview !== prev;
+
+          return (
+            <section key={id} aria-labelledby={`stacked-head-${id}`} className={cn('border-t first:border-t-0', RULE)}>
+              {showPreview ? (
+                <LazyStage>
+                  <div className="h-[56svh] min-h-[280px] w-full">
+                    <PreviewStage
+                      active={meta.preview}
+                      draft={draft}
+                      currency={currency}
+                      onCentre={({ lat, lon }) =>
+                        setDraft((d) =>
+                          d.target && (d.target.lat !== lat || d.target.lon !== lon)
+                            ? { ...d, target: { ...d.target, lat, lon } }
+                            : d,
+                        )
+                      }
+                    />
+                  </div>
+                </LazyStage>
+              ) : null}
+
+              <div className="px-5 py-8 sm:px-6">
+                {/* SCREEN-READER ONLY, and that is not a downgrade.
+                    Every section body already opens with its own
+                    <PanelHead />, which prints the same number and the
+                    same name — "PHASE 03 · MISSION", "CAPTURE · 02" —
+                    followed by the question it asks. Rendering this one
+                    visibly put the section name on the page twice in a
+                    row, and in the framing section three times counting
+                    the stage's own title.
+
+                    It stays in the DOM because the <section> is labelled
+                    by it: taking it out would leave six unnamed regions,
+                    and a landmark list of six identical blanks is worse
+                    than a duplicated line. */}
+                <h2 id={`stacked-head-${id}`} className="sr-only">
+                  {`${String(meta.index).padStart(2, '0')} · ${meta.label}`}
+                </h2>
+                {body(id)}
+              </div>
+            </section>
+          );
+        })}
+
+        {/* THE PRICE AND THE ACTION, AS THE LAST THING IN THE DOCUMENT.
+            Not a bar over it — the owner's instruction was explicit that
+            nothing is fixed on this shape. It is reached by finishing the
+            page, which on a single linear path is where the decision
+            actually completes. */}
+        {draft.missionCode ? null : (
+          <div className={cn('border-t px-5 py-8 sm:px-6', RULE)}>
+            <PanelFoot
+              stacked
+              label={footLabel}
+              totalMinor={totalMinor}
+              currency={currency}
+              action={stackedAction()}
+            />
+          </div>
+        )}
+      </Configurator>
+    );
+  }
+
   return (
     <Configurator
       sectionKey={section}
@@ -542,6 +663,58 @@ export function MissionFlow() {
   }
 
   /**
+   * THE ONE ACTION ON THE STACKED DOCUMENT.
+   *
+   * A linear page has a single ending, so it has a single button, and
+   * that button is the purchase. It is NOT `primaryAction()` with the
+   * section forced to `review`: that function's branches are ordered for
+   * a tabbed surface, where `review` is only reachable once a target
+   * exists, so asking it for the review action with no target returns
+   * "Pay" with a hint about capture windows — advice about the wrong
+   * missing thing.
+   *
+   * The order here is the order the page is read in, so the hint always
+   * names the FIRST unanswered decision above it. A disabled button that
+   * does not say what is missing is a dead end, and on this shape the
+   * missing thing is somewhere up the page rather than behind a tab.
+   */
+  function stackedAction(): PrimaryAction {
+    if (draft.missionCode) {
+      return { label: 'Open the mission file', href: `/m/${draft.missionCode}` };
+    }
+    if (!target) {
+      return {
+        label: 'Continue',
+        disabled: true,
+        hint: 'Name a place above. Everything after it is measured from those coordinates.',
+      };
+    }
+    if (draft.gift === null) {
+      return {
+        label: 'Continue',
+        disabled: true,
+        hint: 'Say who the mission is for, under Mission.',
+      };
+    }
+    if (!sectionAnswered('window', draft)) {
+      return {
+        label: 'Continue',
+        disabled: true,
+        hint: 'Choose a capture window above — the order needs a tasking day.',
+      };
+    }
+    return {
+      label:
+        commission.phase === 'paying'
+          ? 'Authorising'
+          : `Pay ${formatPrice(totalMinor, currency)}`,
+      onClick: () => void commission.pay(),
+      loading: commission.phase === 'paying',
+      arrow: false,
+    };
+  }
+
+  /**
    * What the one button on the surface does, on the section that is open.
    *
    * A blocked action always says what is missing — `hint` is rendered
@@ -602,6 +775,55 @@ export function MissionFlow() {
         ),
     };
   }
+}
+
+/**
+ * Mounts its child only once it is near the viewport, and keeps it
+ * mounted afterwards.
+ *
+ * THIS EXISTS BECAUSE STACKING CHANGED WHAT "A PREVIEW" COSTS. On the
+ * tabbed shape exactly one stage is ever mounted, and the next is built
+ * when the buyer asks for it. Stacked, four of them are in the document
+ * at once — the archive descent, the basemap framing tool, the poster and
+ * the dossier — and mounting all four on arrival means a phone fetches
+ * map tiles and runs a pass search for stages that are two and three
+ * screens below the fold, before the buyer has read the first one.
+ *
+ * `rootMargin` is a full viewport, so a stage is built while it is still
+ * one screen away and is finished by the time it is looked at. Once
+ * mounted it is never unmounted: scrolling back up must not throw away a
+ * framing the buyer has already adjusted.
+ *
+ * NO IntersectionObserver — no problem: the stage mounts immediately.
+ * Degrading to "everything loads" is right for a capability check on a
+ * purchase surface; degrading to "nothing loads" would hide the product.
+ */
+function LazyStage({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    if (shown) return;
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setShown(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setShown(true);
+      },
+      { rootMargin: '100% 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [shown]);
+
+  return (
+    <div ref={ref}>
+      {shown ? children : <div aria-hidden className="h-[56svh] min-h-[280px] w-full" />}
+    </div>
+  );
 }
 
 /**

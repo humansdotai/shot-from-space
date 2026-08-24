@@ -50,12 +50,26 @@ export function PanelFoot({
   totalMinor,
   currency,
   action,
+  stacked = false,
 }: {
   /** What the price is FOR — the tier and the size, in the label role. */
   label: string;
   totalMinor: number;
   currency: Currency;
   action: PrimaryAction;
+  /**
+   * Rendered as the last block of a scrolling document rather than as a
+   * bar pinned to the foot of a panel.
+   *
+   * EVERY TIGHT MEASUREMENT BELOW IS A CONSEQUENCE OF BEING PINNED, and
+   * none of them applies here. The clipped spec line, the stepped-down
+   * padding under 380 and the safe-area inset all exist to buy pixels
+   * back for a scroller that was competing with this bar for one
+   * viewport. In a document there is no competition: the line can wrap,
+   * the padding can breathe, and there is no home indicator underneath
+   * to clear because nothing is over it.
+   */
+  stacked?: boolean;
 }) {
   const hintId = action.hint ? 'panel-foot-hint' : undefined;
 
@@ -63,7 +77,7 @@ export function PanelFoot({
     <div
       data-panel-foot
       className={cn(
-        'px-5 sm:px-6 xl:px-8 xl2:px-10',
+        stacked ? 'px-0' : 'px-5 sm:px-6 xl:px-8 xl2:px-10',
         // TIGHTER UNDER 380px, AND THE REASON IS ARITHMETIC.
         // At 320 x 568 the shell is 497px once the mock-mode strip has
         // taken its 71; <Configurator /> caps the preview so that rail +
@@ -76,8 +90,12 @@ export function PanelFoot({
         // 380 and not `sm`: from 390 up the reserve already leaves the
         // scroller ~240px and the generous control is the better one.
         // Only the two narrow steps in the matrix are starved.
-        'pt-4 pb-[calc(1rem_+_env(safe-area-inset-bottom))]',
-        'max-[379px]:pt-3 max-[379px]:pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]',
+        stacked
+          ? 'pt-0 pb-0'
+          : cn(
+              'pt-4 pb-[calc(1rem_+_env(safe-area-inset-bottom))]',
+              'max-[379px]:pt-3 max-[379px]:pb-[calc(0.75rem_+_env(safe-area-inset-bottom))]',
+            ),
       )}
     >
       {action.hint ? (
@@ -105,7 +123,12 @@ export function PanelFoot({
             </span>
             <span
               data-telemetry
-              className={cn('min-w-0 truncate font-mono text-tele-xs uppercase', INK_DIM)}
+              className={cn(
+                'min-w-0 font-mono text-tele-xs uppercase',
+                // Clipped only when pinned. In a document it wraps.
+                stacked ? 'text-right sm:text-left' : 'truncate',
+                INK_DIM,
+              )}
               title={label}
             >
               {label}
