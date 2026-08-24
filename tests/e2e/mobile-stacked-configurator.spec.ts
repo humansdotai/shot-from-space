@@ -3,28 +3,38 @@ import { horizontalOverflow } from '../support/a11y';
 import { PHONE } from '../support/flow';
 
 /**
- * THE PHONE SHAPE OF /mission — one scrolling document.
+ * THE PHONE SHAPE OF /mission — stepped pages, one floating control.
  *
- * The owner replaced the pinned-panel configurator on phones with a
- * single scrolling page:
+ * This shape has been through two owner instructions and the second
+ * refined the first. Both are recorded because the second only makes
+ * sense against the first.
  *
- *   "on mobile make the purchase payment as a scrollable page with all
- *    the elements on a page with not fixed buttones or components just
- *    like you have on mapiful.com … on mobile the purchase page should
- *    have white background and black text."
+ *   1. "on mobile make the purchase payment as a scrollable page with
+ *       all the elements on a page with not fixed buttones or components
+ *       just like you have on mapiful.com … white background and black
+ *       text."
  *
- * That is a deliberate departure from CONFIGURATOR.md §3.1 — which still
- * governs at ≥ 1024 — so it is the kind of decision that gets silently
- * undone by the next person who reads §3.1 and "fixes" the phone. These
- * tests are the record of the instruction.
+ *   2. "for purchase BREAK IN STEPS ON MOBILE BUT EVERY STEP SHOULD BE A
+ *       SCROLLABLE PAGE WITH ONLY FLOAT BUTTON IS CONTINUE/NEXT/BUY AND
+ *       SOME INFO"
  *
- * They assert the four things the instruction actually asked for, and
- * one it did not: that the ≥ 1024 split is untouched.
+ * So the current shape is: one STEP at a time, each step an ordinary
+ * scrolling page — stage, head and controls all in the document — and
+ * exactly ONE floating element, carrying the action and the price. The
+ * paper ground and black type from the first instruction survive.
+ *
+ * What (2) reversed from (1) is only the stacking: all six sections down
+ * one 15,000px page became one section per page. What it reversed from
+ * the ORIGINAL panel shape is the pinning of everything else — the stage
+ * and the controls scroll now, where they used to share one viewport.
+ *
+ * These tests are the record. The counts matter: "exactly one floating
+ * element" is the instruction, and both zero and two are wrong.
  */
 
 const TARGET = '/mission?address=Lisse%2C%20NL&lat=52.2583&lon=4.5569';
 
-test('mobile /mission: the page scrolls as one document', async ({ page }) => {
+test('mobile /mission: each step is a scrolling page', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto(TARGET);
   await page.waitForSelector('.mission-configurator-stacked');
@@ -40,7 +50,7 @@ test('mobile /mission: the page scrolls as one document', async ({ page }) => {
   expect(metrics.htmlOverflow).not.toBe('hidden');
 });
 
-test('mobile /mission: nothing is fixed or sticky', async ({ page }) => {
+test('mobile /mission: exactly one floating element, and it is the action', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto(TARGET);
   await page.waitForSelector('.mission-configurator-stacked');
@@ -54,26 +64,60 @@ test('mobile /mission: nothing is fixed or sticky', async ({ page }) => {
         const p = getComputedStyle(el).position;
         return p === 'fixed' || p === 'sticky';
       })
-      .map((el) => `${el.tagName}.${String(el.className).slice(0, 40)}`),
+      .map((el) => (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 80)),
   );
 
-  expect(pinned, 'no pinned furniture on the phone purchase page').toEqual([]);
+  expect(pinned, 'the action bar is the only floating thing').toHaveLength(1);
+  // …and it carries the button AND the info beside it.
+  expect(pinned[0]).toMatch(/continue|pay|next/i);
+  expect(pinned[0], 'the bar carries the price beside the button').toMatch(/[€$]\s?\d/);
 });
 
-test('mobile /mission: every section is on the page at once', async ({ page }) => {
+test('mobile /mission: the floating action never covers a control', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+
+  for (const step of ['target', 'framing', 'mission', 'design', 'window', 'review']) {
+    await page.goto(`${TARGET}&step=${step}`);
+    await page.waitForSelector('.mission-configurator-stacked');
+    await page.waitForTimeout(1200);
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(400);
+
+    const covered = await page.evaluate(() => {
+      const bar = document.querySelector('main .fixed')!;
+      const box = bar.getBoundingClientRect();
+      return [...document.querySelectorAll('main button, main input, main a[href]')]
+        .filter((el) => !bar.contains(el))
+        .map((el) => ({ t: (el.textContent ?? '').trim().slice(0, 30), r: el.getBoundingClientRect() }))
+        .filter((o) => o.r.height > 0 && o.r.top < window.innerHeight && o.r.bottom > box.top + 2)
+        .map((o) => o.t);
+    });
+
+    // Fixed furniture is out of flow. Without the spacer that reserves
+    // its height, the last control of every step sits under the bar.
+    expect(covered, `${step}: nothing may sit under the action bar`).toEqual([]);
+  }
+});
+
+test('mobile /mission: one step at a time, and a way back', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await page.goto(TARGET);
   await page.waitForSelector('.mission-configurator-stacked');
 
-  // BY ID, not by `h2`. The section bodies carry their own headings
-  // ("Whose mission is this?"), so a descendant-h2 selector counts those
-  // too and the number it returns is not the number of sections.
+  // BY ID, not by `h2`: the section bodies carry their own headings, so a
+  // descendant-h2 selector counts those too.
   const heads = await page.locator('main [id^="stacked-head-"]').allInnerTexts();
+  expect(heads, 'one section is rendered, not all of them').toHaveLength(1);
 
-  // Six configuring sections. Confirmation is not among them: it is the
-  // receipt, and it replaces the document once the mission is paid for.
-  expect(heads).toHaveLength(6);
-  expect(heads.join(' ')).toMatch(/TARGET[\s\S]*FRAMING[\s\S]*MISSION[\s\S]*DESIGN[\s\S]*WINDOW[\s\S]*REVIEW/i);
+  // The step is named and counted, in the document rather than floating.
+  const main = (await page.locator('main').innerText()).toUpperCase();
+  expect(main).toMatch(/STEP\s*1\s*\/\s*6/);
+
+  // Step one has nowhere to go back to; a later step does.
+  expect(await page.getByRole('button', { name: /^back to/i }).count()).toBe(0);
+  await page.goto(`${TARGET}&step=mission`);
+  await page.waitForSelector('.mission-configurator-stacked');
+  await expect(page.getByRole('button', { name: /^back to/i }).first()).toBeVisible();
 
   expect(await horizontalOverflow(page), 'no sideways scroll at 390').toBe(0);
 });

@@ -143,10 +143,69 @@ export function Configurator({
           // the inversion without a single one of them being told about
           // it. This is the same mechanism <PreviewStage /> already uses
           // for the object column at every width.
-          'surface-light w-full bg-[color:var(--ground)] text-[color:var(--ink)]',
+          'surface-light relative w-full bg-[color:var(--ground)] text-[color:var(--ink)]',
+          /* THE HEADER RESERVE, WHICH THIS SHAPE NEEDS AND THE PANEL
+             SHAPE DID NOT. <SiteHeader /> is `fixed` on every route now,
+             and on the panel shape it sits over the PREVIEW — a
+             photograph, which is where it is designed to sit. Stepped,
+             the first thing in the document is the step bar, and the
+             floating plate was landing straight on top of it.
+
+             `--site-bar-h` is published by the header itself (70px, 90
+             above 1024), so the two cannot drift apart. */
+          'pt-[var(--site-bar-h)]',
         )}
       >
         {children}
+
+        {/* ==========================================================
+            THE ONLY FLOATING THING ON THE SURFACE.
+
+              "BREAK IN STEPS ON MOBILE BUT EVERY STEP SHOULD BE A
+               SCROLLABLE PAGE WITH ONLY FLOAT BUTTON IS
+               CONTINUE/NEXT/BUY AND SOME INFO"
+
+            So: the step scrolls like an ordinary page — stage, head,
+            controls, all of it in the document — and exactly one element
+            is pinned, carrying the action and the price beside it.
+
+            `fixed`, not `sticky`. Sticky would need an ancestor whose box
+            it can stick inside, and this shell's height is whatever the
+            step happens to be; on a short step a sticky bar simply sits
+            at the end of the content and stops being a floating control
+            at the moment it is most needed.
+
+            `env(safe-area-inset-bottom)` is not decoration: on a phone
+            with a home indicator a bar flush to the bottom edge puts its
+            button under the gesture area, where a tap is swallowed.
+
+            THE SPACER BELOW IS PART OF THE BAR, not a workaround. Fixed
+            furniture is out of flow, so without it the last control on
+            every step sits underneath the bar and cannot be reached at
+            the one moment the buyer needs it — which is precisely the
+            defect the pinned-panel shape was built to avoid and would
+            have reintroduced by another route.
+            ========================================================== */}
+        {foot ? (
+          <>
+            <div aria-hidden className="h-[var(--stacked-foot-h,7.5rem)]" />
+            <div
+              className={cn(
+                'fixed inset-x-0 bottom-0 z-40',
+                'border-t',
+                RULE,
+                // The plate is opaque. It is over running content at every
+                // scroll position, and a translucent bar over a photograph
+                // or a table of telemetry is a bar you cannot read.
+                'bg-[color:var(--ground)]',
+                'px-5 pb-[calc(0.875rem_+_env(safe-area-inset-bottom))] pt-3.5 sm:px-6',
+                'shadow-[0_-1px_0_0_color-mix(in_srgb,var(--ink)_8%,transparent)]',
+              )}
+            >
+              {foot}
+            </div>
+          </>
+        ) : null}
       </div>
     );
   }

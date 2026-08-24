@@ -18,6 +18,8 @@ import {
   nextUnanswered,
   sectionAnswered,
   sectionById,
+  sectionEnabled,
+  TAB_SECTIONS,
   type SectionId,
 } from '@/lib/mission-flow/steps';
 import { track } from '@/lib/mission-flow/track';
@@ -388,90 +390,68 @@ export function MissionFlow() {
      document that contains all of them is a control that lies.
      ================================================================= */
   if (stacked) {
-    const ids: SectionId[] = draft.missionCode
-      ? (['confirmation'] as SectionId[])
-      : (['target', 'framing', 'mission', 'design', 'window', 'review'] as SectionId[]);
+    const meta = sectionById(section);
 
     return (
       <Configurator
         stacked
         sectionKey={section}
-        previewKind={sectionById(section).preview}
+        previewKind={meta.preview}
         preview={null}
         rail={null}
-        foot={null}
-      >
-        {ids.map((id, i) => {
-          const meta = sectionById(id);
-          /* THE PREVIEW IS RENDERED ONLY WHEN IT CHANGES. Three of the
-             six sections share the `poster` stage, and stacking them
-             would print the same poster three times down one page —
-             which reads as a bug, and costs three mounts of the same
-             work. So a stage appears at the first section that uses it
-             and is not repeated by the ones that follow. */
-          const prev = i > 0 ? sectionById(ids[i - 1]).preview : null;
-          const showPreview = meta.preview !== prev;
-
-          return (
-            <section key={id} aria-labelledby={`stacked-head-${id}`} className={cn('border-t first:border-t-0', RULE)}>
-              {showPreview ? (
-                <LazyStage>
-                  <div className="h-[56svh] min-h-[280px] w-full">
-                    <PreviewStage
-                      active={meta.preview}
-                      draft={draft}
-                      currency={currency}
-                      onCentre={({ lat, lon }) =>
-                        setDraft((d) =>
-                          d.target && (d.target.lat !== lat || d.target.lon !== lon)
-                            ? { ...d, target: { ...d.target, lat, lon } }
-                            : d,
-                        )
-                      }
-                    />
-                  </div>
-                </LazyStage>
-              ) : null}
-
-              <div className="px-5 py-8 sm:px-6">
-                {/* SCREEN-READER ONLY, and that is not a downgrade.
-                    Every section body already opens with its own
-                    <PanelHead />, which prints the same number and the
-                    same name — "PHASE 03 · MISSION", "CAPTURE · 02" —
-                    followed by the question it asks. Rendering this one
-                    visibly put the section name on the page twice in a
-                    row, and in the framing section three times counting
-                    the stage's own title.
-
-                    It stays in the DOM because the <section> is labelled
-                    by it: taking it out would leave six unnamed regions,
-                    and a landmark list of six identical blanks is worse
-                    than a duplicated line. */}
-                <h2 id={`stacked-head-${id}`} className="sr-only">
-                  {`${String(meta.index).padStart(2, '0')} · ${meta.label}`}
-                </h2>
-                {body(id)}
-              </div>
-            </section>
-          );
-        })}
-
-        {/* THE PRICE AND THE ACTION, AS THE LAST THING IN THE DOCUMENT.
-            Not a bar over it — the owner's instruction was explicit that
-            nothing is fixed on this shape. It is reached by finishing the
-            page, which on a single linear path is where the decision
-            actually completes. */}
-        {draft.missionCode ? null : (
-          <div className={cn('border-t px-5 py-8 sm:px-6', RULE)}>
+        foot={
+          /* THE ONE FLOATING THING ON THE SURFACE.
+             Everything else — the stage, the head, the controls — is in
+             the document and scrolls with it. This bar does not. */
+          draft.missionCode ? null : (
             <PanelFoot
+              /* The floating wrapper in <Configurator /> already carries
+                 the gutters and `env(safe-area-inset-bottom)`; `stacked`
+                 stops this adding a second set of both. */
               stacked
               label={footLabel}
               totalMinor={totalMinor}
               currency={currency}
-              action={stackedAction()}
+              action={primaryAction()}
             />
-          </div>
-        )}
+          )
+        }
+      >
+        {/* THE STEP INDICATOR. In the document, not floating: the owner
+            said the button is the only thing that floats, and a reader
+            who wants to know where they are can look up. It is also the
+            way BACK, which a stepped flow has to have and which the
+            single-scroll shape did not need. */}
+        <StepBar section={section} draft={draft} onSelect={openSection} />
+
+        {/* THE STAGE, IN THE FLOW. It scrolls away like everything else,
+            which is the difference between this and the panel shape: the
+            preview is the top of the page rather than a fixed upper
+            third competing with the controls for one viewport. */}
+        <div className="h-[52svh] min-h-[260px] w-full">
+          <PreviewStage
+            active={meta.preview}
+            draft={draft}
+            currency={currency}
+            onCentre={({ lat, lon }) =>
+              setDraft((d) =>
+                d.target && (d.target.lat !== lat || d.target.lon !== lon)
+                  ? { ...d, target: { ...d.target, lat, lon } }
+                  : d,
+              )
+            }
+          />
+        </div>
+
+        <div className="px-5 pb-8 pt-8 sm:px-6">
+          {/* Screen-reader only: every body opens with its own
+              <PanelHead /> carrying the same number and name. The
+              <section> still needs an accessible name. */}
+          <h2 id={`stacked-head-${section}`} className="sr-only">
+            {`${String(meta.index).padStart(2, '0')} · ${meta.label}`}
+          </h2>
+          {body(section)}
+        </div>
       </Configurator>
     );
   }
@@ -664,58 +644,6 @@ export function MissionFlow() {
   }
 
   /**
-   * THE ONE ACTION ON THE STACKED DOCUMENT.
-   *
-   * A linear page has a single ending, so it has a single button, and
-   * that button is the purchase. It is NOT `primaryAction()` with the
-   * section forced to `review`: that function's branches are ordered for
-   * a tabbed surface, where `review` is only reachable once a target
-   * exists, so asking it for the review action with no target returns
-   * "Pay" with a hint about capture windows — advice about the wrong
-   * missing thing.
-   *
-   * The order here is the order the page is read in, so the hint always
-   * names the FIRST unanswered decision above it. A disabled button that
-   * does not say what is missing is a dead end, and on this shape the
-   * missing thing is somewhere up the page rather than behind a tab.
-   */
-  function stackedAction(): PrimaryAction {
-    if (draft.missionCode) {
-      return { label: 'Open the mission file', href: `/m/${draft.missionCode}` };
-    }
-    if (!target) {
-      return {
-        label: 'Continue',
-        disabled: true,
-        hint: 'Name a place above. Everything after it is measured from those coordinates.',
-      };
-    }
-    if (draft.gift === null) {
-      return {
-        label: 'Continue',
-        disabled: true,
-        hint: 'Say who the mission is for, under Mission.',
-      };
-    }
-    if (!sectionAnswered('window', draft)) {
-      return {
-        label: 'Continue',
-        disabled: true,
-        hint: 'Choose a capture window above — the order needs a tasking day.',
-      };
-    }
-    return {
-      label:
-        commission.phase === 'paying'
-          ? 'Authorising'
-          : `Pay ${formatPrice(totalMinor, currency)}`,
-      onClick: () => void commission.pay(),
-      loading: commission.phase === 'paying',
-      arrow: false,
-    };
-  }
-
-  /**
    * What the one button on the surface does, on the section that is open.
    *
    * A blocked action always says what is missing — `hint` is rendered
@@ -779,50 +707,77 @@ export function MissionFlow() {
 }
 
 /**
- * Mounts its child only once it is near the viewport, and keeps it
- * mounted afterwards.
+ * THE STEP BAR — where you are, and the way back.
  *
- * THIS EXISTS BECAUSE STACKING CHANGED WHAT "A PREVIEW" COSTS. On the
- * tabbed shape exactly one stage is ever mounted, and the next is built
- * when the buyer asks for it. Stacked, four of them are in the document
- * at once — the archive descent, the basemap framing tool, the poster and
- * the dossier — and mounting all four on arrival means a phone fetches
- * map tiles and runs a pass search for stages that are two and three
- * screens below the fold, before the buyer has read the first one.
+ * The owner asked for the phone flow to be broken into steps again, with
+ * the continue button as the ONLY floating thing on the surface. So this
+ * is in the document and scrolls away with everything else.
  *
- * `rootMargin` is a full viewport, so a stage is built while it is still
- * one screen away and is finished by the time it is looked at. Once
- * mounted it is never unmounted: scrolling back up must not throw away a
- * framing the buyer has already adjusted.
+ * It carries the two things a stepped flow owes the person in it: which
+ * step this is out of how many, and a way back to the last one. Back is a
+ * real control rather than a reliance on the browser's — the flow pushes
+ * history, so the browser button does work, but a purchase surface that
+ * makes you reach for browser chrome to change an answer is a purchase
+ * surface that loses the answer.
  *
- * NO IntersectionObserver — no problem: the stage mounts immediately.
- * Degrading to "everything loads" is right for a capability check on a
- * purchase surface; degrading to "nothing loads" would hide the product.
+ * It is NOT the tab rail. `SectionRail` presents all seven sections as
+ * simultaneously reachable tabs, which is right for the desktop split and
+ * is exactly the thing the owner asked to be broken up here. One step at
+ * a time means one step named at a time.
  */
-function LazyStage({ children }: { children: ReactNode }) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [shown, setShown] = useState(false);
+function StepBar({
+  section,
+  draft,
+  onSelect,
+}: {
+  section: SectionId;
+  draft: MissionDraft;
+  onSelect: (id: SectionId) => void;
+}) {
+  const steps = TAB_SECTIONS;
+  const i = steps.findIndex((s) => s.id === section);
+  const meta = steps[i];
+  // The nearest earlier step the buyer is allowed back into. Not simply
+  // `i - 1`: gating can make a previous step unopenable, and a Back that
+  // lands on a refusal is worse than no Back.
+  const back = steps
+    .slice(0, Math.max(0, i))
+    .reverse()
+    .find((s) => sectionEnabled(s.id, draft));
 
-  useEffect(() => {
-    if (shown) return;
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') {
-      setShown(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) setShown(true);
-      },
-      { rootMargin: '100% 0px' },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [shown]);
+  if (!meta) return null;
 
   return (
-    <div ref={ref}>
-      {shown ? children : <div aria-hidden className="h-[56svh] min-h-[280px] w-full" />}
+    <div className={cn('flex items-center gap-4 border-b px-5 py-3 sm:px-6', RULE)}>
+      {back ? (
+        <button
+          type="button"
+          onClick={() => onSelect(back.id)}
+          /* 44px tall, and the negative inline margin keeps the LABEL
+             optically aligned with the page gutter while the target
+             still reaches the edge. */
+          className={cn(
+            '-ml-3 inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-action)] px-3',
+            'text-label uppercase transition-house',
+            INK_DIM,
+            'hover:text-[color:var(--ink)]',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
+            'focus-visible:outline-[color:var(--accent)]',
+          )}
+        >
+          <span aria-hidden>←</span>
+          {`Back to ${back.label}`}
+        </button>
+      ) : (
+        <span className={cn('text-label uppercase', INK_DIM)}>{meta.label}</span>
+      )}
+
+      <span
+        data-telemetry
+        className={cn('ml-auto shrink-0 font-mono text-tele-xs uppercase', INK_DIM)}
+      >
+        {`Step ${i + 1} / ${steps.length}`}
+      </span>
     </div>
   );
 }

@@ -52,31 +52,54 @@ CanvasDiscount. Every one of them, without exception, uses the same model.
   earlier decision without losing the later ones.
 - The preview **updates on every change**, immediately.
 
-### Mobile — SUPERSEDED. One scrolling document.
+### Mobile — REPLACED. Stepped pages, one floating action.
 
-**The owner replaced this shape on 2026-08-24.** Their instruction:
+**Two owner instructions, on 2026-08-24, the second refining the first.**
 
-> "on mobile make the purchase payment as a scrollable page with all the
-> elements on a page with not fixed buttones or components just like you
-> have on mapiful.com … on mobile the purchase page should have white
-> background and black text."
+> 1. "on mobile make the purchase payment as a scrollable page with all
+>    the elements on a page with not fixed buttones or components just
+>    like you have on mapiful.com … white background and black text."
+>
+> 2. "for purchase BREAK IN STEPS ON MOBILE BUT EVERY STEP SHOULD BE A
+>    SCROLLABLE PAGE WITH ONLY FLOAT BUTTON IS CONTINUE/NEXT/BUY AND
+>    SOME INFO"
 
-So below 1024 `/mission` is now ONE ordinary scrolling page: every section
-stacked down it in order, nothing fixed and nothing sticky, paper ground
-with black type, and the price and primary action as the last block of the
-document rather than a bar over it.
+The shape below 1024 is therefore:
 
-That is a deliberate departure from §3.1 below 1024, and §3.1 still holds
-in full at 1024 and above. The reasoning: §3.1 was written against a
-TABBED surface, where an action below the fold is an action a buyer never
-learns exists. A single linear document is a different object — one path,
-travelled once, with the action at the end where the decisions finish.
+```
+┌───────────────────────┐
+│ ← Back      Step 3/6  │   in the document, scrolls away
+├───────────────────────┤
+│      THE STAGE        │   in the document, scrolls away
+│                       │
+│   head + controls     │   ordinary page scroll, 3–5k px
+│                       │
+├───────────────────────┤
+│ TOTAL · SPEC   €279   │   ← the ONLY floating element
+│ [ CONTINUE / PAY ]    │     + env(safe-area-inset-bottom)
+└───────────────────────┘
+```
 
-Measured on the reference the owner named: mapiful.com's editor at 390px
-is a 3819px document with every option group stacked. Their tab rail and
-ADD TO CART bar are `sticky`; ours are not, because the instruction was
-explicit. Locked by `tests/e2e/mobile-stacked-configurator.spec.ts`,
-which also asserts the ≥ 1024 split is untouched.
+- **One step at a time.** Not the six-section single scroll of (1), and
+  not the tabbed panel either — the rail presents every section as
+  simultaneously reachable, which is what (2) asked to be broken up.
+- **The step is an ordinary page.** Stage, head and controls all scroll.
+  This is what survives from (1) and it is the difference from the
+  original panel shape, where the stage was pinned at 38–46svh and the
+  controls fought it for one viewport.
+- **Exactly one floating element**, carrying the action AND the price —
+  "and some info". Zero and two are both wrong, and the test counts.
+- **A spacer reserves its height.** Fixed furniture is out of flow;
+  without it the last control of every step sits under the bar.
+- **Paper ground, black type**, from (1).
+
+§3.1 holds unchanged at ≥ 1024. It also effectively holds here — the
+floating action is visible at every scroll position on every step — but
+by a different mechanism than the desktop split.
+
+Locked by `tests/e2e/mobile-stacked-configurator.spec.ts`, which asserts
+the floating count, that nothing hides under the bar on any of the six
+steps, and that the ≥ 1024 split is untouched.
 
 The superseded shape is kept below for the record.
 
@@ -112,9 +135,10 @@ whose options the buyer cannot yet evaluate.
 1. **The primary CTA is visible without scrolling, at every step, at every
    breakpoint ≥ 1024.** This is the acceptance test for the whole project. An
    agent that ships a surface failing this has not done the job.
-   **Below 1024 on `/mission` this rule is superseded** — see the mobile
-   section above. It still applies to every other surface at every width.
-   Do not "fix" the phone configurator back to a pinned bar.
+   **Below 1024 on `/mission` the mechanism differs** — see the mobile
+   section above: the action floats over a scrolling step rather than
+   being a sibling of an internal scroller. The rule itself still holds.
+   Do not "fix" the phone configurator back to the pinned-stage panel.
 2. **The price is visible wherever a CTA is**, and it is the price that will be
    charged — `tierPriceMinor(tier, formatId, frame, currency)` and nothing
    else. Display and charge come from one function; that was a real defect
