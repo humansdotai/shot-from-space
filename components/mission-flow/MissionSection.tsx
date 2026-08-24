@@ -61,22 +61,24 @@ export function MissionSection({
   return (
     <PanelStack>
       <PanelHead eyebrow="Phase 03 · Mission" title="Whose mission is this?">
-        Three short answers. Only one of them changes the order.
+        Only one of these changes the order.
       </PanelHead>
 
       <WhyGroup value={why} onSelect={onWhy} />
       <WhoGroup gift={gift} onSelect={onGift} />
 
-      <PhaseBreak
-        clip="zoom-logo"
-        label="In orbit"
-        /* NOT "the instrument that will fly your frame". Nothing has been
-           tasked and no spacecraft has been assigned, so a caption on
-           stock footage saying THIS one flies it is a claim the system
-           cannot produce. What is true is the geometry and who chooses;
-           it is the same sentence the Window section already prints. */
-        caption="Spacecraft are on station over this ground now. Which one flies your frame is chosen by the operator when the mission is tasked — what you are naming below is the tasking."
-      />
+      {/* NO CAPTION. It used to carry `Spacecraft are on station over
+          this ground now. Which one flies your frame is chosen by the
+          operator when the mission is tasked — what you are naming below
+          is the tasking.` The only load-bearing part of that was the
+          denial that this footage is the buyer's spacecraft, and
+          <PhaseBreak /> prints the clip's own record under every plate
+          whatever the caller writes: `Stock orbital footage · not the
+          spacecraft assigned to this mission`. The claim is protected by
+          the component, so the paragraph was protecting nothing. What is
+          left is the clip as punctuation, which is all it was ever
+          declared to be. */}
+      <PhaseBreak clip="zoom-logo" label="In orbit" />
 
       <NameGroup value={missionName} onChange={onName} />
       <PreviewDisclosure />

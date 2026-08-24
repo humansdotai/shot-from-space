@@ -14,7 +14,7 @@ import {
 import { DEFAULT_TIER, TIER_COPY, tierPriceMinor } from '@/lib/mission-flow/config';
 import { revealFrameUrl } from '@/lib/mission-flow/api';
 import type { MissionDraft } from '@/lib/mission-flow/state';
-import { PanelGroup, PanelHead, PanelNote, PreviewDisclosure } from './Panel';
+import { PanelDisclosure, PanelGroup, PanelHead, PanelNote, PreviewDisclosure } from './Panel';
 import { CardGroup, type CardOption } from './CardGroup';
 import { NO_MISSION_CODE } from './PosterStage';
 
@@ -51,6 +51,22 @@ import { NO_MISSION_CODE } from './PosterStage';
  * are priced in `lib/pricing.ts` and tiers in `lib/mission-flow/config.ts`,
  * and nothing is priced here.
  */
+/**
+ * Why the catalogue is wider than the offer. KEPT, SHORTENED: a buyer who
+ * has heard the poster has four compositions and is shown one will ask,
+ * and the honest answer is also the reassuring one — the others are not
+ * withheld behind a price, they cannot yet be printed.
+ */
+function CompositionsNote() {
+  if (COMPOSABLE_STYLE_IDS.length >= POSTER_STYLE_IDS.length) return null;
+  return (
+    <PanelNote className="pt-2">
+      {POSTER_STYLE_IDS.length - COMPOSABLE_STYLE_IDS.length} further compositions are drawn but
+      not yet printable, so only this one is sold.
+    </PanelNote>
+  );
+}
+
 export function DesignSection({
   draft,
   formatId,
@@ -88,9 +104,13 @@ export function DesignSection({
 
   return (
     <div className="space-y-8">
+      {/* INSTRUCTIONAL COPY FOR A THING THE BUYER IS LOOKING AT. The old
+          standfirst inventoried the preview — frame, telemetry strip,
+          print credit, proportion — all of which are visible in the
+          preview. What it could NOT be read off the picture is the one
+          clause kept: that this is the composition that prints. */}
       <PanelHead eyebrow="Capture" title="Configure the print.">
-        The preview is the composition that prints: your frame, the telemetry strip and the
-        print credit, at the proportion of the size you pick.
+        The preview above is the composition that prints.
       </PanelHead>
 
       {draft.target ? (
@@ -127,14 +147,17 @@ export function DesignSection({
             }}
             image={{ src: revealFrameUrl(draft.target.lat, draft.target.lon, 17), unoptimized: true }}
           />
-          <PanelNote className="pt-4">{posterStyleNote(draft.posterStyle)}</PanelNote>
-          {COMPOSABLE_STYLE_IDS.length < POSTER_STYLE_IDS.length ? (
-            <PanelNote className="pt-2">
-              {POSTER_STYLE_IDS.length - COMPOSABLE_STYLE_IDS.length} further compositions are
-              designed and drawn, and the print pipeline lays out only this one today. Only a
-              composition that can actually be printed is offered for sale.
-            </PanelNote>
-          ) : null}
+          {/* DEMOTED. `posterStyleNote()` is a forty-word essay on the
+              composition the buyer has just tapped — and the card they
+              tapped already carries its name, its one-line description
+              and the share of the sheet the frame takes. A paragraph
+              restating a selected card is the clearest case of detail
+              that belongs on demand. The words are unchanged and still
+              come from `lib/poster/styles.ts`. */}
+          <PanelDisclosure className="pt-3" summary="About this composition">
+            {posterStyleNote(draft.posterStyle)}
+          </PanelDisclosure>
+          <CompositionsNote />
         </PanelGroup>
       ) : null}
 
@@ -163,11 +186,13 @@ export function DesignSection({
         </span>
       </div>
 
+      {/* PRICE TRANSPARENCY, NOT A SECOND PRICE LIST. What the figure
+          above is one of, and where the other two are chosen. The
+          paragraph explaining what a commission IS belongs on the
+          Review step, beside the cards that offer the alternative. */}
       <PanelNote>
-        Priced as a commission — a spacecraft tasked to fly your coordinates for a frame that
-        does not exist yet. Review also offers the archive frame that already exists over them,
-        and the large format; both re-price this same size, and Review shows what each one
-        actually gets you.
+        Priced as a commission. Review also offers the archive frame and the large format at this
+        size.
       </PanelNote>
 
       <PreviewDisclosure />

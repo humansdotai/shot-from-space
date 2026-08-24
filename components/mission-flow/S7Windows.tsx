@@ -20,7 +20,14 @@ import type { PassWindow, PassWindowResult } from '@/lib/mission-flow/passes';
 import type { OverheadResult, OverheadSatellite } from '@/lib/mission-flow/overhead';
 import { telemetryCoords } from '@/lib/mission-flow/entry';
 import type { ChosenWindow } from '@/lib/mission-flow/state';
-import { PanelGroup, PanelHead, PanelNote, PanelStack, PreviewDisclosure } from './Panel';
+import {
+  PanelDisclosure,
+  PanelGroup,
+  PanelHead,
+  PanelNote,
+  PanelStack,
+  PreviewDisclosure,
+} from './Panel';
 import { CardGroup, type CardOption } from './CardGroup';
 
 /**
@@ -406,47 +413,68 @@ export function WindowSection({
         <NextPassReadout overhead={overhead} />
       ) : null}
 
-      {/* ❸ THE EVIDENCE UNDER IT. */}
+      {/* ❸ THE EVIDENCE, ON DEMAND.
+
+          Eight named spacecraft with a live orbit glyph each is roughly
+          700px on a 390 phone — a quarter of this step — and not one row
+          of it bears on WHICH DAY, the only decision the step carries.
+          The count that does bear on it is already in the aside of every
+          window card (`3 PASSES · 61° PEAK`), and the next crossing is
+          counted down immediately above. So the list keeps its place in
+          the document and loses its place in the reading order.
+
+          `PASS_ATTRIBUTION` travels WITH it, verbatim: it is the sentence
+          that stops a list of real satellite names reading as an
+          assignment, and it belongs wherever the names are. */}
       {ready && overhead && overhead.satellites.length > 0 ? (
-        <PanelGroup
-          label="Over your coordinates"
-          hint={`${overhead.searchHours / 24} day search`}
-        >
+        <PanelDisclosure summary="Which spacecraft cross this sky">
+          <span className="block pb-1">
+            {overhead.satellites.length} of the {overhead.tracked} spacecraft this site tracks, in
+            the next {overhead.searchHours / 24} days. {PASS_ATTRIBUTION}
+          </span>
           <SatelliteList satellites={overhead.satellites} />
           {overhead.silent.length > 0 ? (
-            <PanelNote className="pt-4">
+            <span className="block pt-3">
               {overhead.silent.join(', ')}{' '}
               {overhead.silent.length === 1 ? 'makes' : 'make'} no pass above{' '}
               {overhead.minElevationDeg}° over your coordinates inside the search. A
               sun-synchronous orbit genuinely does not cross every point every week, and an
               empty answer is left empty.
-            </PanelNote>
+            </span>
           ) : null}
-        </PanelGroup>
+        </PanelDisclosure>
       ) : null}
 
-      {/* ❹ WHERE IT ALL CAME FROM. Last, smallest, and never absent. */}
+      {/* ❹ WHERE IT ALL CAME FROM — behind a disclosure, but never gone.
+
+          How many element sets were usable, from which source, how many
+          hours old: provenance of the instrument, not of the product. It
+          answers a question only a reader who has decided to audit the
+          dates would ask, and it is exactly there for them.
+
+          The clause about cloud is NOT provenance and it is not optional
+          reading — it is the reason no capture-likelihood figure appears
+          anywhere in this flow. It stays inside this disclosure rather
+          than being dropped, and the Review step, where the money is,
+          states the same thing on the surface beside the cloud
+          guarantee. */}
       {ready ? (
-        <div className={cn('border-t pt-4', RULE)}>
-          <p
-            data-telemetry
-            className={cn('font-mono text-tele-xs uppercase tabular-nums', INK_DIM)}
-          >
+        <PanelDisclosure className={cn('border-t pt-2', RULE)} summary="Where these dates come from">
+          <span data-telemetry className="block pb-1 font-mono uppercase tabular-nums">
             {fleet
               ? `${fleet.usable} / ${fleet.tracked} ELEMENT SETS USABLE · ${fleet.source.toUpperCase()}${
                   fleet.freshestAgeHours !== null ? ` · ${fleet.freshestAgeHours} H OLD` : ''
                 }`
               : 'ELEMENT PROVENANCE NOT READ'}
-          </p>
-          <PanelNote className="pt-3">{PASS_ATTRIBUTION}</PanelNote>
+          </span>
           {!result?.indicative ? (
-            <PanelNote className="pt-2">
+            <>
               A pass counts when the satellite clears {PASS_MIN_ELEVATION_DEG}° above your
               horizon. Cloud is not known this far ahead and is not part of these dates, and no
               capture-likelihood figure is derived from them.
-            </PanelNote>
+            </>
           ) : null}
-        </div>
+        </PanelDisclosure>
       ) : null}
 
       <PreviewDisclosure />
@@ -513,10 +541,13 @@ function NextPassReadout({ overhead }: { overhead: OverheadResult }) {
         {now === null ? '—' : formatRemaining(remaining)}
       </p>
 
+      {/* The peak is already in the telemetry line above this readout and
+          the instant is the whole point of a countdown, so the sentence
+          keeps only what neither of them can say: that naming a
+          spacecraft here is not naming the one that flies the mission. */}
       <p className={cn('pt-3 text-note', INK_DIM)}>
-        {formatInstant(next.s.risesAt)}, when {next.s.name} clears {overhead.minElevationDeg}°
-        above your horizon and climbs to {next.s.peakElevationDeg}°. That is geometry, not a
-        booking — the spacecraft that flies a mission is chosen by the operator at tasking.
+        {formatInstant(next.s.risesAt)}, {next.s.name}. Geometry, not a booking — the spacecraft
+        that flies a mission is chosen by the operator at tasking.
       </p>
     </div>
   );

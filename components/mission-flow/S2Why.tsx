@@ -51,7 +51,7 @@ export function WhyGroup({
          group happens to contain — it is small print about the control
          above it, which is the role that slot exists for. The claim is
          unchanged and it is still true: see the header of this file. */
-      note="This answer is not stored with your order, is not sent anywhere and is not printed on anything. It stays in this browser tab."
+      note="Not stored with your order, not sent anywhere, not printed. It stays in this tab."
     >
       <CardGroup label="Why this place?" options={OPTIONS} value={value} onSelect={onSelect} />
     </PanelGroup>

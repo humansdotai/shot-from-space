@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { db } from '../support/db';
+import { db, SEEDED_CODES } from '../support/db';
 
 /**
  * THE POST-PURCHASE MOBILE NUMBER.
@@ -24,17 +24,29 @@ import { db } from '../support/db';
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3200';
 
+/**
+ * A SEEDED MISSION, NOT "THE NEWEST PAID ONE".
+ *
+ * This suite used to bind to `findFirst({ paidAt: { not: null } })`, which
+ * passed in isolation and failed in a full run — the borrowed mission was
+ * one another suite had created and then deleted in its own cleanup, so
+ * by the time the wrong-email assertion ran the row was gone and the
+ * "unchanged" check compared against undefined.
+ *
+ * `cleanup()` in tests/support/db.ts explicitly refuses to delete a
+ * seeded demo mission, which makes one the only stable anchor here. 18QD
+ * is the least referenced of the four across the suite.
+ */
+const CODE = '18QD' satisfies (typeof SEEDED_CODES)[number];
+
 let code: string;
 let email: string;
 let shareToken: string;
 let previous: string | null = null;
 
 test.beforeAll(async () => {
-  const mission = await db.mission.findFirst({
-    where: { paidAt: { not: null } },
-    orderBy: { createdAt: 'desc' },
-  });
-  test.skip(!mission, 'no paid mission in the dev database to test against');
+  const mission = await db.mission.findUnique({ where: { code: CODE } });
+  test.skip(!mission, `seeded mission ${CODE} is not in the dev database`);
   code = mission!.code;
   email = mission!.email;
   shareToken = mission!.shareToken;

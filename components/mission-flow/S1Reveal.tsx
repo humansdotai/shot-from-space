@@ -4,7 +4,6 @@ import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { clsx as cn } from 'clsx';
 import { CreditBox, CropMarks } from '@/components/fui';
-import { OrbitFigure } from '@/components/satellites/OrbitFigure';
 import { CURVE, INK, INK_DIM, INPUT_CLASS, FieldLabel, RULE } from '@/components/purchase/fields';
 import { formatPrice, getFormat } from '@/lib/pricing';
 import type { Currency, FormatId, FrameOption, GeoSuggestion } from '@/lib/types';
@@ -25,14 +24,21 @@ import { fetchScene, revealFrameUrl, suggestAddresses } from '@/lib/mission-flow
 import type { SceneInfo } from '@/lib/mission-flow/scene';
 import { landmarkFor, telemetryCoords } from '@/lib/mission-flow/entry';
 import type { MissionTarget } from '@/lib/mission-flow/state';
-import { FieldRow, FieldTable, PanelGroup, PanelHead, PanelNote, PanelStack } from './Panel';
+import {
+  FieldRow,
+  FieldTable,
+  PanelDisclosure,
+  PanelGroup,
+  PanelHead,
+  PanelNote,
+  PanelStack,
+} from './Panel';
 import {
   SkyChart,
   type SkyResult,
   ageLabel,
   fixed,
   groupDigits,
-  phaseOf,
   untilLabel,
   useLiveClock,
   useLiveLook,
@@ -299,16 +305,16 @@ function PriceRange({
 
   return (
     <PanelNote>
-      The total in the panel is the {TIER_COPY[DEFAULT_TIER].name.toLowerCase()} — one of{' '}
-      {TIER_IDS.length}. At {size} the same coordinates can be bought from{' '}
+      The total below is the {TIER_COPY[DEFAULT_TIER].name.toLowerCase()}, one of {TIER_IDS.length}.
+      At {size} these coordinates run{' '}
       <span data-telemetry className="font-mono tabular-nums">
         {formatPrice(low, currency)}
-      </span>{' '}
-      to{' '}
+      </span>
+      –
       <span data-telemetry className="font-mono tabular-nums">
         {formatPrice(high, currency)}
       </span>
-      ; you choose in Review and the total follows.
+      ; you choose in Review.
     </PanelNote>
   );
 }
@@ -344,30 +350,33 @@ function TargetRecord({ target, range }: { target: MissionTarget; range: ReactNo
           is standing in for it — and with that paragraph above them, the
           pass began below the fold of the panel's scroller on a 1440 x 820
           desktop, which is the same defect CONFIGURATOR.md §1 was written
-          about. Nothing is dropped or shortened; the two statements about
-          the PICTURE are grouped together, under their own label, after
-          the two about the MISSION. */}
+          about. The statements about the PICTURE are grouped together, under
+          their own label, after the ones about the MISSION. */}
       <NextCrossing lat={target.lat} lon={target.lon} sky={sky} />
       <PassGlossary sky={sky} />
 
-      <PanelGroup
-        label="About the picture beside you"
-        note={
-          <>
-            {REVEAL_SOURCE_NOTICE}
-            {scene
-              ? ` The scene here is ${scene.city}, ${scene.countryCode}, about ${scene.distanceKm} km from your coordinates.`
-              : failed
-                ? ' The scene record could not be read, so nothing is claimed about its date or origin.'
-                : ''}
-          </>
-        }
-      >
+      {/* THE ONE THING THIS BLOCK MAY NOT LOSE. The picture beside these
+          controls is NOT the buyer's capture, and a page that lets them
+          assume it is has told them something untrue. So the claim stays
+          on the surface, in the body role, in one line. What moves behind
+          the disclosure is the PROVENANCE of the stand-in — which
+          provider is unconfigured, which archive scene was cropped, how
+          far its centre is from here. All true, none of it needed to
+          decide whether to commission a frame of this address. */}
+      <PanelGroup label="What that picture is">
         <p className={cn('max-w-[var(--measure)] text-body', INK)}>
           {scene?.acquired
-            ? `It is archive imagery from ${scene.acquired}. Your mission captures a new frame of this ground. Yours alone.`
-            : 'It is archive imagery, undated. Your mission captures a new frame of this ground. Yours alone.'}
+            ? `Archive imagery from ${scene.acquired}, not your capture. Your mission takes a new frame of this ground.`
+            : 'Archive imagery, undated, and not your capture. Your mission takes a new frame of this ground.'}
         </p>
+        <PanelDisclosure className="pt-3" summary="Where it comes from">
+          {REVEAL_SOURCE_NOTICE}
+          {scene
+            ? ` The scene here is ${scene.city}, ${scene.countryCode}, about ${scene.distanceKm} km from your coordinates.`
+            : failed
+              ? ' The scene record could not be read, so nothing is claimed about its date or origin.'
+              : ''}
+        </PanelDisclosure>
       </PanelGroup>
 
       {range}
@@ -421,7 +430,7 @@ function NextCrossing({
   const seed = useMemo(() => new Date().toISOString(), []);
   const now = useLiveClock(seed);
   const crossing = reading?.next ?? null;
-  const { look, subPoint } = useLiveLook(crossing, lat, lon, now);
+  const { look } = useLiveLook(crossing, lat, lon, now);
 
   return (
     <PanelGroup
@@ -442,13 +451,13 @@ function NextCrossing({
           <div className="flex justify-center pb-1">
             <SkyChart crossing={crossing} />
           </div>
-          {/* Two lines, and they are the legend. Kept short on purpose: at
-              1440 x 820 the chart and this caption together are what a
-              reader sees before scrolling, and a four-line legend cut in
-              half by the fold explains nothing. */}
+          {/* THE LEGEND STAYS. It is not instructional copy for a control
+              the reader can see — a polar sky plot is unreadable without
+              being told that the rim is the horizon and the centre is
+              overhead. It is one line now instead of two. */}
           <p className={cn('mx-auto max-w-[var(--measure-tight)] pb-5 text-center text-note', INK_DIM)}>
-            North at the top; the outer ring is your horizon, the centre is straight overhead. The
-            dashed ring is {PASS_MIN_ELEVATION_DEG}° — below it nobody images.
+            Rim is your horizon, centre is straight overhead. Below the dashed{' '}
+            {PASS_MIN_ELEVATION_DEG}° ring nobody images.
           </p>
 
           {crossing ? (
@@ -463,66 +472,28 @@ function NextCrossing({
                 <FieldRow
                   label="Rises in"
                   value={untilLabel(crossing.risesAt, now)}
-                  note={`${utcStamp(crossing.risesAt)} — when it clears your horizon.`}
+                  note={utcStamp(crossing.risesAt)}
                 />
-                <FieldRow
-                  label="Highest point"
-                  value={`${fixed(crossing.peakElevation, 0)}°`}
-                  note="Above your horizon. Ten degrees is the floor."
-                />
+                <FieldRow label="Highest point" value={`${fixed(crossing.peakElevation, 0)}°`} />
                 <FieldRow
                   label="Above the horizon"
                   value={fixed(crossing.durationMin, 0)}
                   unit="min"
-                  note="Horizon to horizon. The shutter is open for seconds of it."
                 />
                 {look ? (
-                  <FieldRow
-                    label="Distance now"
-                    value={groupDigits(look.rangeKm)}
-                    unit="km"
-                    note={
-                      look.elevation >= 0
-                        ? 'In your sky as you read this.'
-                        : 'Below your horizon as you read this.'
-                    }
-                  />
+                  <FieldRow label="Distance now" value={groupDigits(look.rangeKm)} unit="km" />
                 ) : null}
               </FieldTable>
 
-              {/* THE SPACECRAFT, WHERE IT IS. <OrbitFigure /> draws the ring
-                  to scale against the globe from the real altitude, tilts it
-                  by the real inclination, turns the globe to the real
-                  sub-point and puts the marker at the real orbital phase.
-                  Every one of those five values is propagated from the same
-                  element set the crossing above was found in, and they are
-                  recomputed every second — which is why it moves. */}
-              <div className="flex items-center gap-5 pt-6">
-                <OrbitFigure
-                  inclination={crossing.inclination}
-                  phase={phaseOf(crossing, now)}
-                  periodMinutes={crossing.periodMin}
-                  altitudeKm={subPoint?.altitudeKm ?? null}
-                  subLatitude={subPoint?.latitude ?? null}
-                  subLongitude={subPoint?.longitude ?? null}
-                  size={116}
-                  live={look !== null && look.elevation >= PASS_MIN_ELEVATION_DEG}
-                  className={cn('shrink-0', INK_DIM)}
-                />
-                <FieldTable dense className="min-w-0 flex-1">
-                  <FieldRow label="Inclination" value={`${fixed(crossing.inclination, 1)}°`} />
-                  <FieldRow label="One orbit" value={fixed(crossing.periodMin, 1)} unit="min" />
-                  {subPoint ? (
-                    <FieldRow label="Altitude" value={groupDigits(subPoint.altitudeKm)} unit="km" />
-                  ) : null}
-                  {subPoint ? (
-                    <FieldRow
-                      label="Over"
-                      value={`${fixed(Math.abs(subPoint.latitude), 1)}° ${subPoint.latitude >= 0 ? 'N' : 'S'}  ${fixed(Math.abs(subPoint.longitude), 1)}° ${subPoint.longitude >= 0 ? 'E' : 'W'}`}
-                    />
-                  ) : null}
-                </FieldTable>
-              </div>
+              {/* CUT, 2026-08: <OrbitFigure /> and the inclination /
+                  period / altitude / sub-point table under it. Every
+                  figure in them was real and none of them was the
+                  buyer's. Inclination and orbital period describe the
+                  SYSTEM; the sky chart and the five rows above it
+                  describe what happens over this address, which is the
+                  only part that bears on whether to commission it. The
+                  same live orbit glyph still runs on the Window step,
+                  beside the decision it actually informs. */}
             </>
           ) : (
             <p className={cn('max-w-[var(--measure)] text-body', INK)}>
@@ -533,16 +504,23 @@ function NextCrossing({
             </p>
           )}
 
-          <PanelNote className="pt-5">
-            This crossing was propagated in this browser with SGP4, from element sets published by
-            CelesTrak for the {reading.usable} spacecraft this site tracks
+          {/* DEMOTED, NOT DELETED. Which propagator, which element-set
+              provider and how old the fit is are facts about the
+              INSTRUMENT, and no purchase decision turns on them. But two
+              sentences in here are load-bearing — that this is a model
+              run forward rather than a downlink, and that the spacecraft
+              flying a mission is not the one named above — and both are
+              carried through verbatim. */}
+          <PanelDisclosure className="pt-3" summary="Where these numbers come from">
+            Propagated in this browser with SGP4, from element sets published by CelesTrak for the{' '}
+            {reading.usable} spacecraft this site tracks
             {reading.source === 'snapshot'
               ? ' — from a set bundled with this build, because the live request did not complete —'
               : ','}{' '}
             the freshest fitted {ageLabel(reading.freshestAgeHours).toLowerCase()} ago. It is a
             model run forward, not telemetry: nobody is downlinking to this page.{' '}
             {PASS_ATTRIBUTION}
-          </PanelNote>
+          </PanelDisclosure>
         </>
       )}
     </PanelGroup>
@@ -550,40 +528,41 @@ function NextCrossing({
 }
 
 /**
- * THE THREE WORDS THE REST OF THE FLOW USES WITHOUT DEFINING THEM.
+ * WHAT THE MONEY BUYS, IN TWO WORDS THE FLOW USES AND NEVER DEFINES.
  *
- * `Window` is a tab in the rail, `pass` is in the capture copy and cloud is
- * in the guarantees — and until here none of the three was ever explained.
- * Each term is defined against a number this browser just computed for
- * these coordinates, so the definition is not a general fact about space,
- * it is a fact about this address.
+ * `Window` is a step in the flow and cloud is in the guarantees, and
+ * until here neither was ever explained. Each is defined against a number
+ * this browser just computed for these coordinates, so the definition is
+ * not a general fact about space, it is a fact about this address.
  *
- * The cloud line is `guaranteeTerm('retask').detail` verbatim. Guarantee
+ * The cloud line is `guaranteeTerm('retask').label` verbatim. Guarantee
  * wording has exactly one source (`lib/guarantees.ts`) and re-typing it
  * here — even accurately — is how the fourteen contradictions that file
  * exists to prevent got written in the first place.
+ *
+ * TWO TERMS, NOT THREE. `Pass` was the third, and the sky chart directly
+ * above it draws exactly what it defined — an arc over one horizon and
+ * down the other — with the duration of that crossing in the table
+ * beside it. A definition of a thing the reader is looking at is the
+ * clearest case there is of copy that can go.
  */
 function PassGlossary({ sky }: { sky?: SkyResult }) {
   const reading = sky?.reading ?? null;
-  const crossing = reading?.next ?? null;
   const ready = sky?.status === 'ready' && reading !== null;
 
   const terms = [
     {
-      term: 'Pass',
-      body: crossing
-        ? `One crossing. This one is above your horizon for ${fixed(crossing.durationMin, 0)} minutes, and the sensor can only work while it is high enough — the shutter is open for seconds of it.`
-        : `One crossing: the spacecraft comes up over one horizon, goes over you and is gone. It can only image while it is above ${PASS_MIN_ELEVATION_DEG}°, and it is only up there for minutes.`,
-    },
-    {
       term: 'Capture window',
       body: ready
-        ? `Every pass on one calendar day. You order a day, not a minute: the tracked fleet crosses these coordinates ${reading.crossings24h === 1 ? 'once' : `${reading.crossings24h} times`} in the next 24 hours, the best of them reaching ${fixed(reading.best24hElevation, 0)}° over you, and which crossing is used is decided on the day.`
-        : 'Every pass on one calendar day. You order a day, not a minute; which crossing is used is decided on the day.',
+        ? `A day, not a minute. The tracked fleet crosses these coordinates ${reading.crossings24h === 1 ? 'once' : `${reading.crossings24h} times`} in the next 24 hours; which crossing is used is decided on the day.`
+        : 'A day, not a minute. Which crossing is used is decided on the day.',
     },
     {
+      /* VERBATIM from `lib/guarantees.ts` — the `label`, which is the
+         promise at one line, rather than the `detail`. Shorter, and it
+         is still the only source of guarantee wording there is. */
       term: 'Cloud',
-      body: guaranteeTerm('retask').detail,
+      body: guaranteeTerm('retask').label + '.',
     },
   ];
 
@@ -653,8 +632,7 @@ function NameThePlace({
   return (
     <PanelStack>
       <PanelHead eyebrow="Target · 01" title="Name the place." rule={false}>
-        A mission is a spacecraft crossing one set of coordinates. Nothing below can be measured
-        until this page has them.
+        A mission is a spacecraft crossing one set of coordinates.
       </PanelHead>
 
       <div>
@@ -670,9 +648,12 @@ function NameThePlace({
           onChange={(e) => setQuery(e.target.value)}
           aria-describedby="mission-place-note"
         />
+        {/* The claim it protects — that this is not a live geocoder —
+            survives at the field it qualifies. The reassurance about keys
+            and accounts is not a purchase risk anybody has at the moment
+            they type a street name. */}
         <p id="mission-place-note" className={cn('pt-3 text-note', INK_DIM)}>
-          Mock mode: this searches a built-in dataset of real street addresses rather than a
-          live geocoder. No account and no key is involved.
+          Mock mode: a built-in dataset of real street addresses, not a live geocoder.
         </p>
 
         {searching ? (
@@ -711,10 +692,10 @@ function NameThePlace({
 
       {/* The panel was otherwise EMPTY on a bare arrival — a headline, a
           field, and four hundred pixels of nothing under a €279 button.
-          The three terms cost the flow uses are defined here without any
-          numbers in them, because there are no coordinates yet to measure
-          over; the moment a place is named the same block re-renders with
-          this address's own figures in it. */}
+          The two terms are defined here without any numbers in them,
+          because there are no coordinates yet to measure over; the moment
+          a place is named the same block re-renders with this address's
+          own figures in it. */}
       <PassGlossary />
       {range}
     </PanelStack>

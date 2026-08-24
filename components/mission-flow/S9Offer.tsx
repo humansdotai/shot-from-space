@@ -41,7 +41,7 @@ import type { OverheadResult } from '@/lib/mission-flow/overhead';
 import type { SceneInfo } from '@/lib/mission-flow/scene';
 import type { ChosenWindow, MissionTarget } from '@/lib/mission-flow/state';
 import { isEmail } from '@/lib/mission-flow/state';
-import { PanelGroup, PanelHead, PanelNote } from './Panel';
+import { PanelDisclosure, PanelGroup, PanelHead, PanelNote } from './Panel';
 import { CardGroup, type CardOption } from './CardGroup';
 import { isTasked } from './S8Dossier';
 import {
@@ -357,6 +357,18 @@ export function ReviewSection({
         </p>
       </div>
 
+      {/* THE REST OF WHAT IS SIMULATED, IN ONE PLACE INSTEAD OF THREE.
+          `Wallets are simulated in mock mode` sat under the wallet row
+          and the geocoder note sat under the guarantees, two screens
+          apart, each a separate line of small print about the same
+          subject. The plate above marks the payment; this is everything
+          else, one tap from it, and no claim is softened or lost. */}
+      <PanelDisclosure summary="What else is simulated">
+        The Apple Pay and Google Pay buttons below are drawn but not wired, and there is no
+        payment sheet behind them. The postal record for your coordinates is resolved by the
+        built-in geocoder when the order opens, not by a live address service.
+      </PanelDisclosure>
+
       <PanelGroup label="Express">
         <div className="grid grid-cols-2 gap-3">
           {['Apple Pay', 'Google Pay'].map((wallet) => (
@@ -376,7 +388,6 @@ export function ReviewSection({
             </button>
           ))}
         </div>
-        <p className={cn('pt-3 text-note', INK_DIM)}>Wallets are simulated in mock mode.</p>
       </PanelGroup>
 
       <div className="flex items-center gap-4">
@@ -451,11 +462,6 @@ export function ReviewSection({
           detail={secondaryTerm.detail}
         />
       </div>
-
-      <PanelNote>
-        Mock mode: the postal record for your coordinates is resolved by the built-in geocoder
-        when the order opens, not by a live address service.
-      </PanelNote>
 
       {phase === 'paying' ? (
         <p role="status" aria-live="polite" className={cn('text-label uppercase', INK_DIM)}>
@@ -560,41 +566,45 @@ function TaskingEvidence({
             <SpecRow label="Highest that day" value={`${day.peakElevationDeg}°`} mono />
           </>
         ) : null}
+        {/* THE COUNT STAYS — it is the sentence that makes the price
+            defensible, and it is one row. `Elements · CELESTRAK · 6 H
+            OLD` went with it: the freshness of an element set is the
+            provenance of the instrument, and a buyer at the pay button
+            is not auditing the propagator. It is still printed, behind
+            the disclosure on the Window step. */}
         <SpecRow
           label={`Opportunities in ${overhead.searchHours / 24} days`}
           value={`${totalPasses} passes · ${overhead.satellites.length} spacecraft`}
           mono
         />
-        <SpecRow
-          label="Elements"
-          value={`${overhead.elements.source.toUpperCase()}${
-            overhead.elements.freshestAgeHours !== null
-              ? ` · ${overhead.elements.freshestAgeHours} H OLD`
-              : ''
-          }`}
-          mono
-        />
       </dl>
 
-      <div className="pt-4">
+      {/* NAMED, BUT ON DEMAND. Four spacecraft rows with live orbit
+          glyphs are about 360px directly above the pay button, and the
+          row of the table above already says how many there are. The
+          list is one tap away and `PASS_ATTRIBUTION` travels inside it,
+          verbatim, because it is the sentence that stops real satellite
+          names reading as an assignment. */}
+      <PanelDisclosure className="pt-2" summary="Which spacecraft cross this sky">
+        <span className="block pb-1">{PASS_ATTRIBUTION}</span>
         <SatelliteList satellites={overhead.satellites} limit={4} />
-      </div>
-      {overhead.satellites.length > 4 ? (
-        <PanelNote className="pt-3">
-          {overhead.satellites.length - 4} further tracked spacecraft also cross this sky inside
-          the search. All of them are listed on the Window tab.
-        </PanelNote>
-      ) : null}
+        {overhead.satellites.length > 4 ? (
+          <span className="block pt-3">
+            {overhead.satellites.length - 4} further tracked spacecraft also cross this sky
+            inside the search. All of them are listed on the Window step.
+          </span>
+        ) : null}
+      </PanelDisclosure>
 
-      <PanelNote className="pt-4">{PASS_ATTRIBUTION}</PanelNote>
-
-      {/* THE HONEST SHAPE OF THE GAP. Saying why a likelihood is absent is
-          worth more than a number nobody could stand behind, and it hands
-          the reader the promise that covers the risk instead. */}
-      <PanelNote className="pt-2">
-        No capture-likelihood figure is shown. Geometry is computable a week ahead and cloud is
-        not, and this site has no forecast bound to a future pass — so instead of a percentage,
-        the cloud promise at the foot of this panel is what covers it.
+      {/* THE HONEST SHAPE OF THE GAP — AND IT STAYS ON THE SURFACE.
+          This is the one paragraph on the step that a buyer needs in
+          order to read the absence of a percentage correctly, and it
+          points at the promise that covers the risk instead. It is a
+          risk-reducer sitting next to the money, so it was shortened and
+          not demoted. */}
+      <PanelNote className="pt-4">
+        No capture-likelihood figure is shown: cloud is not forecastable a week out and this site
+        has no forecast bound to a future pass. The cloud promise below is what covers it.
       </PanelNote>
     </PanelGroup>
   );
@@ -656,14 +666,21 @@ function ArchiveEvidence({
         <SpecRow label="Sensor" value={scene ? scene.sensor : '—'} mono />
       </dl>
 
+      {/* Both sentences prevent a wrong expectation about what was just
+          bought, so both stay on the surface. `REVEAL_SOURCE_NOTICE` is
+          about the PREVIEW rather than the order and moves behind the
+          disclosure — where the buyer who wants to know what they are
+          looking at will find it whole. */}
       <PanelNote className="pt-4">
         Nothing is tasked and no pass is flown, so an archive order ships as soon as it is
         printed.
         {hasWindow
-          ? ' The capture window you chose is not used by this tier — it belongs to a commission, where a spacecraft is actually sent.'
+          ? ' The capture window you chose belongs to a commission and is not used by this tier.'
           : ''}
       </PanelNote>
-      <PanelNote className="pt-2">{REVEAL_SOURCE_NOTICE}</PanelNote>
+      <PanelDisclosure className="pt-2" summary="About the picture above">
+        {REVEAL_SOURCE_NOTICE}
+      </PanelDisclosure>
     </PanelGroup>
   );
 }

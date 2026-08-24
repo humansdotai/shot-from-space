@@ -30,9 +30,9 @@ import { MISSION_CLIPS, type MissionClip } from './MissionGround';
  *   <StatGrid>      figures with their labels above them
  *   <PhaseBreak>    a clip between two phases (see the note on it)
  *
- * plus <PanelTag> for a state, <PanelNote> for small print and
- * <PreviewDisclosure> for the one disclosure the preview column owes
- * the reader.
+ * plus <PanelTag> for a state, <PanelNote> for small print,
+ * <PanelDisclosure> for detail on demand, and <PreviewDisclosure> for
+ * the one disclosure the preview column owes the reader.
  *
  * ==================================================================
  * FIVE KINDS OF THING, FIVE SHAPES — THE 2026-08 CORRECTION
@@ -405,6 +405,92 @@ export function PanelGroup({
 
       {note ? <PanelNote className="pt-3">{note}</PanelNote> : null}
     </section>
+  );
+}
+
+/* ================================================================== */
+/* Detail on demand                                                   */
+/* ================================================================== */
+
+/**
+ * THE DISCLOSURE — small print the buyer can open, not prose they must
+ * wade through.
+ *
+ * ------------------------------------------------------------------
+ * WHY THIS EXISTS
+ * ------------------------------------------------------------------
+ * The owner's measurement of the phone flow: 2,769 words to buy a
+ * print, every step between 3.6 and 6.2 phone screens. Most of that
+ * volume was not wrong — it was TRUE AND UNTIMELY. Which element-set
+ * provider was used, that a crossing was propagated with SGP4 in this
+ * browser, that a postal record is resolved by the built-in geocoder:
+ * every one of those is a fact the system can produce, and not one of
+ * them is a fact a buyer needs in order to decide anything on the
+ * screen it was printed on.
+ *
+ * Deleting them was not available. Several exist to STOP the page
+ * implying something untrue — that the basemap is the buyer's own
+ * capture, that a named spacecraft is assigned, that a likelihood
+ * figure is being withheld rather than being unproducible. A claim that
+ * is only prevented by a sentence keeps its sentence.
+ *
+ * So the sentence keeps its place in the document and loses its place
+ * in the reading order. NN/g's progressive disclosure, exactly: the
+ * decision stays on the surface, the justification is one tap away, and
+ * the reader who wants it is the reader who gets it.
+ *
+ * ------------------------------------------------------------------
+ * WHY NATIVE `<details>` AND NOT A STATE HOOK
+ * ------------------------------------------------------------------
+ * It is keyboard operable, focusable and correctly announced with no
+ * JavaScript at all, it works before hydration, and its open state
+ * survives find-in-page in every current browser. A hand-rolled
+ * `aria-expanded` button plus a panel is more code and strictly worse.
+ *
+ * The summary is `min-h-11` — 44px, the house floor — and its marker is
+ * `[ + ]` / `[ - ]` in the monospace label role, which is the bracketed
+ * vocabulary the credit box and the telemetry chips already speak. No
+ * rotation and no height animation, so there is nothing for
+ * `prefers-reduced-motion` to suppress: the panel is present or it is
+ * not.
+ */
+export function PanelDisclosure({
+  summary,
+  children,
+  className,
+}: {
+  /** What is behind it, in three or four words. Sentence case. */
+  summary: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <details className={cn('group', className)}>
+      <summary
+        className={cn(
+          'flex min-h-11 cursor-pointer list-none items-center gap-2.5 py-1',
+          'font-mono text-tele uppercase transition-house',
+          INK_DIM,
+          'hover:text-[color:var(--ink)]',
+          '[&::-webkit-details-marker]:hidden',
+        )}
+      >
+        <span aria-hidden className="shrink-0 tabular-nums">
+          <span className="group-open:hidden">[ + ]</span>
+          <span className="hidden group-open:inline">[ - ]</span>
+        </span>
+        {summary}
+      </summary>
+      {/* A <div>, not a <PanelNote>, and the difference matters: the note
+          is a <p>, and two callers put a <ul> of satellites inside a
+          disclosure. A list inside a paragraph is invalid markup and the
+          browser un-nests it, which is a hydration mismatch rather than a
+          styling nit. Same type role, same left marker rule, same
+          measure — see <PanelNote /> for why the rule is there. */}
+      <div className={cn('max-w-[var(--measure-wide)] pt-1 pb-1 text-note', INK_DIM)}>
+        <div className="border-l border-[color:var(--rule-strong)] pl-3">{children}</div>
+      </div>
+    </details>
   );
 }
 
@@ -829,9 +915,8 @@ export function PhaseBreak({
 export function PreviewDisclosure() {
   return (
     <PanelNote>
-      The print beside these controls is a preview composition. The picture in it is the archive
-      stand-in from the reveal; the frame that prints is the one your mission captures. Values
-      marked after capture are filled from the pass that takes it.
+      A preview. The picture in it is the archive stand-in; the frame that prints is the one your
+      mission captures, and the values marked after capture come from that pass.
     </PanelNote>
   );
 }

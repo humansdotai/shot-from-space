@@ -60,13 +60,13 @@ export function NameGroup({
     <PanelGroup
       label="Mission name"
       hint={`${draft.length} / ${MISSION_NAME_MAX}`}
-      note={
-        <span id="mission-name-note">
-          It goes on the mission file, the dossier and every message about the mission — not on the
-          print, which carries the mission code. The default is a sequence number: there is no name
-          on file to build one from, because nothing is asked of you before payment.
-        </span>
-      }
+      /* WHAT SURVIVED THE CUT, AND WHY. The first sentence prevents a
+         real disappointment — a buyer who believes this name prints on
+         the poster and finds the mission code there instead. The second,
+         explaining that the default is a sequence number because no name
+         is on file before payment, explained the SYSTEM: it answered a
+         question nobody asks of a prefilled field. */
+      note={<span id="mission-name-note">It goes on your mission file, not on the print.</span>}
     >
       {/* No <FieldLabel> here. <PanelGroup label="Mission name"> two lines
           above already names this field, and printing it twice read as a

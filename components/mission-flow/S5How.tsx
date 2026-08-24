@@ -1,26 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
 import { clsx as cn } from 'clsx';
-import { OrbitGlyph } from '@/components/satellites/OrbitGlyph';
-import { INK, INK_DIM, RULE } from '@/components/purchase/fields';
-import {
-  CAPTURE_GSD_BASIS,
-  CAPTURE_GSD_CM,
-  PASS_ATTRIBUTION,
-  PASS_MIN_ELEVATION_DEG,
-} from '@/lib/mission-flow/config';
-import { FieldRow, FieldTable, PanelGroup, PanelHead, PanelNote, PanelStack } from './Panel';
-import {
-  fixed,
-  groupDigits,
-  phaseOf,
-  untilLabel,
-  useLiveClock,
-  useLiveLook,
-  useSkyReading,
-  utcStamp,
-} from './PassGeometry';
+import { INK } from '@/components/purchase/fields';
+import { CAPTURE_GSD_BASIS, CAPTURE_GSD_CM } from '@/lib/mission-flow/config';
+import { FieldRow, FieldTable, PanelDisclosure, PanelGroup, PanelHead, PanelStack } from './Panel';
 import type { MissionTarget } from '@/lib/mission-flow/state';
 
 /**
@@ -32,41 +15,40 @@ import type { MissionTarget } from '@/lib/mission-flow/state';
  * Screen 5 carried no decision at all: three lines and a `Continue`.
  * CONFIGURATOR.md is explicit that a screen of pure narration may fold
  * into an adjacent section, and this is the one it belongs to — the
- * three lines describe the capture, and this is the section where the
- * buyer positions the capture. The decision itself lives in the preview
- * column: the capture footprint on a basemap,
- * `components/frame/FrameOnMap.tsx`, mounted by <FramingStage />.
- * Everything in this panel exists to tell the buyer what they are
- * looking at while they use it.
+ * decision lives in the preview column, where the capture footprint sits
+ * on a basemap (`components/frame/FrameOnMap.tsx`, mounted by
+ * <FramingStage />). Everything in this panel exists to tell the buyer
+ * what they get out of the square they are moving.
  *
  * ------------------------------------------------------------------
- * THE THREE LINES NOW CARRY NUMBERS
+ * WHAT WAS CUT HERE, 2026-08, AND WHY
  * ------------------------------------------------------------------
- * They used to read "A satellite passes over your coordinates" — true,
- * and indistinguishable from marketing, because nothing about it could
- * be checked. It now names the actual next crossing of these actual
- * coordinates: when it rises and how high it climbs, propagated by SGP4
- * in this browser from CelesTrak's published elements (see
- * `./PassGeometry.tsx`). A different address prints different numbers,
- * which is the difference between a fact and a slogan.
+ * The owner's measurement: 2,769 words to buy a print, and this step
+ * carried 430 of them for a decision that is made entirely on the map
+ * above it. Three things went.
  *
- * WHY THE ELEVATION IS PRINTED AT ALL. It is the one figure that
- * connects the geometry to the picture the buyer is placing. A pass low
- * on the horizon looks at a roof from the side, through several times
- * the air; a high pass looks nearly straight down. That is also what
- * `CAPTURE_GSD_BASIS` means when it says the figure depends on how far
- * off nadir the spacecraft flies — so the two are said together rather
- * than in two different places.
+ * THE NUMBERED NARRATION. `01 A spacecraft crosses this sky…` was the
+ * fourth place in the flow that the next crossing is printed — Target
+ * draws it as a sky chart, Window counts down to it and lists the fleet,
+ * Review counts down to it again. Restating it here bought the buyer
+ * nothing they could act on while dragging a map. `03 The frame you
+ * place here is what it is pointed at` said what the standfirst says,
+ * one line lower.
  *
- * ------------------------------------------------------------------
- * THE RESOLUTION FIGURE
- * ------------------------------------------------------------------
- * `CAPTURE_GSD_CM` from the config, with `CAPTURE_GSD_BASIS` printed
- * beside it, always. What is contracted with the operator is a
- * resolution TIER; the exact ground sample distance depends on the
- * spacecraft assigned and how far off nadir it flies, and a product that
- * sells resolution does not get to quote a figure without saying where
- * it comes from.
+ * THE `THE PASS THOSE NUMBERS CAME FROM` BLOCK — an orbit glyph, a live
+ * slant range, a four-row table and a hundred-word note about how
+ * elevation trades against air mass. All of it true, none of it a fact
+ * about where the square goes. With it went this step's second SGP4
+ * search over the same coordinates.
+ *
+ * WHAT SURVIVED, AND HAD TO. `CAPTURE_GSD_CM` is what the money buys and
+ * it stays on the surface. `CAPTURE_GSD_BASIS` is the sentence that
+ * stops it being a promise the system cannot keep — the exact figure
+ * depends on the spacecraft assigned and how far off nadir it flies — so
+ * it stays too, verbatim, one tap away in the disclosure attached to the
+ * figure it qualifies. A resolution claim on a product that sells
+ * resolution never stands on its own; it does not have to shout to
+ * stand.
  *
  * WHAT IS NOT REPEATED HERE. That the basemap is reference imagery, who
  * serves it, at what ground sample, and where the frame centre currently
@@ -74,111 +56,31 @@ import type { MissionTarget } from '@/lib/mission-flow/state';
  * than a panel note could, and saying it twice would make the second one
  * look like a different claim.
  */
+/* The target is still the prop <MissionFlow /> passes and still what
+   gates this section from rendering at all; nothing in the panel reads
+   it any more, because everything that did was a second printing of a
+   fact another step already owns. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function FramingSection({ target }: { target: MissionTarget }) {
-  const sky = useSkyReading(target.lat, target.lon);
-  const seed = useMemo(() => new Date().toISOString(), []);
-  const now = useLiveClock(seed);
-  const crossing = sky.reading?.next ?? null;
-  const { look } = useLiveLook(crossing, target.lat, target.lon, now);
-
-  const lines = [
-    {
-      n: '01',
-      text: crossing
-        ? `A spacecraft crosses this sky. The next one clears the horizon in ${untilLabel(crossing.risesAt, now).toLowerCase()} and climbs to ${fixed(crossing.peakElevation, 0)}°.`
-        : 'A spacecraft crosses this sky. It is not overhead now and it will not be for long when it is — a pass is minutes.',
-    },
-    {
-      n: '02',
-      text: `Near the top of that arc the sensor is tasked at ${CAPTURE_GSD_CM} cm per pixel.`,
-    },
-    {
-      n: '03',
-      text: 'The frame you place here is what it is pointed at. Your print carries the telemetry of that pass.',
-    },
-  ];
-
   return (
     <PanelStack>
       <PanelHead eyebrow="Capture · 02" title="Where the frame falls.">
-        Position the capture footprint over the ground you want in the print.
+        Move the ground under the square. What is inside it is what your mission captures.
       </PanelHead>
 
-      <ol className="flex flex-col">
-        {lines.map((line) => (
-          <li key={line.n} className={cn('flex items-baseline gap-4 border-b py-3.5', RULE)}>
-            <span
-              data-telemetry
-              className={cn('shrink-0 font-mono text-tele uppercase tabular-nums', INK_DIM)}
-            >
-              {line.n}
-            </span>
-            <span className={cn('max-w-[var(--measure)] text-body', INK)}>{line.text}</span>
-          </li>
-        ))}
-      </ol>
+      <PanelGroup label="What the frame gets you">
+        <FieldTable>
+          <FieldRow label="Ground sample ordered" value={String(CAPTURE_GSD_CM)} unit="cm/px" />
+        </FieldTable>
 
-      {crossing ? (
-        <PanelGroup
-          label="The pass those numbers came from"
-          hint="Live"
-          note={
-            <>
-              Height is what makes the difference to the frame. A pass low on the horizon sees a
-              roof from the side, through several times the air; one near the top of the sky looks
-              almost straight down — which is the same thing the resolution note below means by how
-              far off nadir the spacecraft flies.
-            </>
-          }
-        >
-          {/* The glyph's ring is this spacecraft's real inclination and its
-              marker is its real mean anomaly advanced to this second. It is
-              an icon that is also a readout — the distinction
-              `components/satellites/OrbitGlyph.tsx` draws, and the reason it
-              is allowed to move at all. */}
-          <div className="flex items-center gap-4 pb-4">
-            <OrbitGlyph
-              inclination={crossing.inclination}
-              phase={phaseOf(crossing, now)}
-              size={56}
-              className={cn(
-                'shrink-0',
-                look && look.elevation >= PASS_MIN_ELEVATION_DEG
-                  ? 'text-[color:var(--accent)]'
-                  : INK_DIM,
-              )}
-            />
-            <p className={cn('min-w-0 text-note', INK_DIM)}>
-              {crossing.name}, {crossing.operator}
-              {look ? `, ${groupDigits(look.rangeKm)} km away as you read this` : ''}.
-            </p>
-          </div>
+        <p className={cn('max-w-[var(--measure)] pt-4 text-body', INK)}>
+          Your print carries the telemetry of the pass that takes it.
+        </p>
 
-          <FieldTable>
-            <FieldRow
-              label="Rises in"
-              value={untilLabel(crossing.risesAt, now)}
-              note={`${utcStamp(crossing.risesAt)} — when it clears your horizon.`}
-            />
-            <FieldRow
-              label="Highest point"
-              value={`${fixed(crossing.peakElevation, 0)}°`}
-              note={`Above the horizon. ${PASS_MIN_ELEVATION_DEG}° is the floor for imaging.`}
-            />
-            <FieldRow
-              label="Above the horizon"
-              value={fixed(crossing.durationMin, 0)}
-              unit="min"
-              note="Horizon to horizon."
-            />
-            <FieldRow label="Ground sample ordered" value={String(CAPTURE_GSD_CM)} unit="cm/px" />
-          </FieldTable>
-        </PanelGroup>
-      ) : null}
-
-      <PanelNote>
-        {CAPTURE_GSD_BASIS} {PASS_ATTRIBUTION}
-      </PanelNote>
+        <PanelDisclosure className="pt-2" summary="What that figure depends on">
+          {CAPTURE_GSD_BASIS}
+        </PanelDisclosure>
+      </PanelGroup>
     </PanelStack>
   );
 }
