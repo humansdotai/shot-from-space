@@ -1,0 +1,875 @@
+/* ==================================================================
+   MISSION BRIEF — the floating entry card, and the deck it opens.
+
+   Two objects, one stylesheet, because they are one object seen twice:
+   the card on the page is the top of the stack, and pressing it is the
+   stack being picked up. They share `--radius-deck` for exactly that
+   reason (see app/globals.css, where the token names its two
+   consumers by hand).
+
+   Three things in here are exceptions to the layout system, and each
+   one is an exception for a stated reason:
+
+     1. RADIUS. `--radius-deck`. Documented at the token; the short
+        version is that these are card OBJECTS, not page surfaces, and
+        the token is scoped to this file's two components by name.
+
+     2. SHADOW. Both objects carry one and both are defined LOCALLY,
+        below, rather than as global elevation tokens. Deliberate: the
+        elevation block in globals.css lists three agreed shadow
+        exceptions and adding a fourth to it is how "no shadows in the
+        layout system" stops being true. A shadow that only one
+        component may use lives in that component's stylesheet.
+
+     3. NO HAIRLINE ON EITHER CARD. Every other surface in the product
+        bounds itself with a 1px rule. These must not — §E says the
+        deck's cards separate by FILL AND SHADOW, and the owner's
+        instruction for the entry card is "no strokes". Both can afford
+        it: the deck's card is paper on void, the largest contrast step
+        the palette contains, and the entry card is a lit photograph on
+        void. A hairline on either is a line drawn along an edge that
+        is already the strongest edge on screen.
+
+   The only literal colours in the file are the pure blacks in the two
+   casts, and they are literal on purpose: on a #08090b ground a shadow
+   tinted with the ground is invisible, and only true black is darker
+   than the room. Everything else — colour, type, curve, duration —
+   comes from the tokens.
+   ================================================================== */
+
+/* The three tilt channels, registered as <number> so they stay typed,
+   skip a re-parse per frame, and can be forced to rest by the
+   reduced-motion block at the foot of this file even against the inline
+   values ./tilt.ts writes. Custom property names are never scoped by
+   CSS Modules, so these are deliberately global — and deliberately
+   prefixed, so they cannot collide with artifact3d's `--a3d-*` or
+   framedposter's `--fp-*`. */
+@property --bd-nx {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --bd-ny {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --bd-lift {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+/* ==================================================================
+   PART ONE — THE ENTRY CARD
+
+   A wide rectangle floating at the bottom right OF THE SCREEN, with
+   the words MISSION BRIEF set large and white over the clip.
+
+   WHY `position: fixed` AND NOT AN ABSOLUTE CORNER OF THE MASTHEAD.
+   The instruction is "bottom right of the screen", and the screen is
+   the viewport. An absolutely-positioned card would be the bottom
+   right of the masthead — visible for one screenful and then gone for
+   the remaining nine, which is not a floating card, it is a card that
+   happens to sit low in a band.
+
+   Fixed brings four obligations, and they are met here rather than
+   assumed away:
+
+     · IT MUST NOT COVER THE PAGE'S OWN CONTROLS. The file ends in its
+       controls — File actions, then the site footer — and a card
+       parked over them is a defect, not a decoration. `.retreat`
+       below is the answer: the component watches how much document is
+       left below the fold and stands the card down before the reader
+       reaches the controls. See BriefEntryCard.tsx.
+     · IT MUST COLLAPSE AT 390. It does, twice: the width steps down
+       with the viewport, and the whole object can be minimised by the
+       reader to the small control at the foot of this section — which
+       is still the door to the deck, so minimising it never costs the
+       brief.
+     · IT MUST RESPECT THE SAFE AREA. Every offset below is stated as
+       a base value plus `env(safe-area-inset-*)`, so the card clears a
+       home indicator and a landscape notch rather than sitting under
+       one.
+     · IT MUST NEVER TRAP FOCUS AND NEVER SIT OVER THE DECK. It is two
+       ordinary buttons in the page's own tab order, and it sits at
+       z-index 30 — above the document, below the site header at 50 and
+       far below the deck's overlay at 60, which is opaque and covers
+       it completely while the brief is open.
+   ================================================================== */
+
+.entry {
+  position: fixed;
+  z-index: 30;
+  right: calc(20px + env(safe-area-inset-right));
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  /* The card must never be wider than the screen it is floating on,
+     inset included, however wide the step below asks for. */
+  max-width: calc(100vw - 40px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  transition:
+    opacity var(--duration-house) var(--ease-house),
+    transform var(--duration-house) var(--ease-house);
+}
+
+/* STOOD DOWN. The reader has arrived at the foot of the file, where the
+   page keeps its own controls, and the card gets out of the way: it
+   drops, fades, stops taking pointer events and — via `inert` in the
+   component — leaves the tab order and the accessibility tree with it,
+   so nothing invisible is still reachable. */
+.entry[data-retreat] {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  pointer-events: none;
+}
+
+.card3d {
+  position: relative;
+  display: block;
+  width: 248px;
+  max-width: 100%;
+  border-radius: var(--radius-deck);
+  /* NO BORDER. The owner's words are "with no strokes", and §E already
+     says a card of this kind separates by fill and shadow. */
+  box-shadow:
+    0 2px 6px rgb(0 0 0 / 0.45),
+    0 26px 52px -24px rgb(0 0 0 / 0.85);
+  transition:
+    transform var(--duration-house) var(--ease-house),
+    box-shadow var(--duration-house) var(--ease-house);
+}
+
+@media (hover: hover) {
+  .card3d:hover {
+    transform: translate3d(0, -2px, 0);
+    box-shadow:
+      0 4px 10px rgb(0 0 0 / 0.5),
+      0 34px 64px -26px rgb(0 0 0 / 0.9);
+  }
+}
+
+/* THE PRESS TARGET. Stretched under the whole card, which is drawn
+   pointer-transparent above it — the plate is a <figure> and cannot go
+   inside a <button>, and VideoPlate's pause control is itself a
+   <button> and cannot nest inside one. */
+.hit {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: none;
+  border-radius: var(--radius-deck);
+  cursor: pointer;
+}
+
+/* Everything the card DRAWS. Pointer-transparent so the press target
+   underneath receives the whole card; VideoPlate's PAUSE control is the
+   one descendant that opts back in. */
+.draw {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-deck);
+  pointer-events: none;
+}
+
+.draw button {
+  pointer-events: auto;
+}
+
+/* THE SCRIM. A single left-to-right ramp, which is the whole reason the
+   type sits at the left: it keeps the words legible over a moving cloud
+   deck while leaving the right of the frame — the satellite, and the
+   pause control — in the clear. Stated as a mix with the ground token
+   rather than as a colour. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  /* Two ramps. The left-to-right one carries the words; the short one off
+     the top edge is what makes the telemetry line and the minimise mark
+     legible when the clip's cloud deck comes up bright behind them. */
+  background-image:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-void) 52%, transparent) 0%,
+      transparent 44%
+    ),
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-void) 88%, transparent) 0%,
+      color-mix(in srgb, var(--color-void) 62%, transparent) 38%,
+      color-mix(in srgb, var(--color-void) 12%, transparent) 74%,
+      transparent 100%
+    );
+}
+
+.plateText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 16px;
+  /* The right of the plate belongs to the clip and to the pause
+     control, which VideoPlate pins at `bottom-3 right-3` and shows
+     permanently on a coarse pointer. */
+  padding-inline-end: 76px;
+}
+
+.plateTele {
+  font-family: var(--font-typestar);
+  font-size: var(--text-file-xs);
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-paper-dim);
+}
+
+/* THE LABEL — white, over the video, and much larger than the telemetry
+   tag it replaces (9px, then; the display role, now). Two lines rather
+   than one: a wide card is wide, not endless, and stacking the two
+   words is what buys the size. Set in the sans at the display role, so
+   it steps 28 / 32 / 36 / 40 / 44 with the rest of the product and
+   invents no size of its own. */
+.plateTitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-display);
+  line-height: 0.94;
+  letter-spacing: 0.005em;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--color-paper);
+  /* Legibility over moving picture. The scrim does the work; this is
+     the backstop for the one frame where a cloud comes through it. */
+  text-shadow: 0 1px 14px rgb(0 0 0 / 0.55);
+}
+
+.plateLine {
+  display: block;
+}
+
+.plateArrow {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: 12px;
+  vertical-align: middle;
+  color: var(--color-paper-dim);
+  transition: color var(--duration-house) var(--ease-house);
+}
+
+.card3d:hover .plateArrow {
+  color: var(--color-paper);
+}
+
+/* MINIMISE. 44px square in the top right of the card, no fill and no
+   border so it reads as a mark on the picture rather than a second
+   control competing with the label. It does not remove the brief — it
+   swaps the card for `.mini` below, which is still the way in. */
+.minimise {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-paper);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.85;
+  /* A hard halo and a soft one. The mark sits on moving picture, and a
+     single soft shadow disappears the moment a bright cloud passes under
+     it — which is most of this clip. */
+  text-shadow:
+    0 0 2px rgb(0 0 0 / 0.9),
+    0 1px 10px rgb(0 0 0 / 0.9);
+  transition: opacity var(--duration-house) var(--ease-house);
+}
+
+@media (hover: hover) {
+  .minimise:hover {
+    opacity: 1;
+  }
+}
+
+/* THE MINIMISED STATE. Still the door to the deck, so the brief is
+   never one press away from being unreachable — it is the same object
+   with the picture taken off it. */
+.mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius-deck);
+  background-color: var(--color-deck);
+  color: var(--color-paper);
+  font-family: var(--font-typestar);
+  font-size: var(--text-file-s);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow:
+    0 2px 6px rgb(0 0 0 / 0.45),
+    0 20px 40px -22px rgb(0 0 0 / 0.85);
+  transition:
+    transform var(--duration-house) var(--ease-house),
+    background-color var(--duration-house) var(--ease-house);
+}
+
+@media (hover: hover) {
+  .mini:hover {
+    transform: translate3d(0, -2px, 0);
+    background-color: var(--color-deck-2);
+  }
+}
+
+@media (min-width: 768px) {
+  .entry {
+    right: calc(24px + env(safe-area-inset-right));
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    max-width: calc(100vw - 48px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+
+  .card3d {
+    width: 320px;
+  }
+
+  .plateText {
+    padding-inline: 20px;
+    padding-inline-end: 80px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .entry {
+    right: calc(32px + env(safe-area-inset-right));
+    bottom: calc(32px + env(safe-area-inset-bottom));
+    max-width: calc(100vw - 64px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+
+  .card3d {
+    width: 356px;
+  }
+
+  .plateText {
+    padding-inline: 24px;
+    padding-inline-end: 84px;
+  }
+}
+
+@media (min-width: 120rem) {
+  .card3d {
+    width: 400px;
+  }
+}
+
+/* ==================================================================
+   PART TWO — THE DECK
+
+   White cards on a black ground, dealt rather than scrolled.
+   ================================================================== */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  /* Opaque, not a scrim. §B calls for a black ground, and a deck read
+     through a translucent wash of the page behind it is a modal, not a
+     ground. It is also what puts the entry card — fixed at z-index 30
+     — comprehensively out of sight while the deck is open. */
+  background-color: var(--color-void);
+  overflow: hidden;
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  /* Notch and home-indicator. The footer controls are the reason: a
+     44px target under the indicator is not a 44px target. */
+  padding-block-start: env(safe-area-inset-top);
+  padding-block-end: env(safe-area-inset-bottom);
+}
+
+/* ------------------------------------------------------------------
+   HEADER — name · reference … folio · close
+   ------------------------------------------------------------------ */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  border-block-end: 1px solid var(--color-hairline-soft);
+}
+
+/* One step down the telemetry ramp from where it was — the chrome
+   states what this is and then gets out of the way of the sheet. */
+.title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-tele-s);
+  line-height: var(--text-tele-s--line-height);
+  letter-spacing: var(--text-tele-s--letter-spacing);
+  text-transform: uppercase;
+  color: var(--color-paper);
+}
+
+.code {
+  color: var(--color-paper-faint);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerEnd {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 0 auto;
+}
+
+/* THE READOUT. `03 / 06` — a position in a set, not six dots (§D).
+   Monospace and tabular so the digits do not shuffle the layout as the
+   index changes, which is the entire argument for a monospace readout
+   over a proportional one. */
+.readout {
+  font-family: var(--font-mono);
+  font-size: var(--text-tele-s);
+  line-height: var(--text-tele-s--line-height);
+  letter-spacing: var(--text-tele-s--letter-spacing);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-paper-dim);
+  white-space: nowrap;
+}
+
+.readoutIndex {
+  color: var(--color-paper);
+}
+
+/* 44px square. A target before it is a glyph. */
+.close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-inline-end: -10px;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-action);
+  color: var(--color-paper-faint);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color var(--duration-house) var(--ease-house);
+}
+
+@media (hover: hover) {
+  .close:hover {
+    color: var(--color-paper);
+  }
+}
+
+/* ------------------------------------------------------------------
+   THE STACK
+
+   One grid cell. Every card is laid in it, and where a card sits is a
+   function of its DEPTH — the five custom properties BriefDeck.tsx
+   writes per slide. Nothing here is animated from JavaScript: an index
+   change is a property change, and the transition below interpolates
+   it on the compositor.
+
+   NO `overflow: hidden`. The old horizontal track needed it to keep
+   off-screen slides off the page, and it clipped the cards' own
+   shadows to do it. A dealt card leaves by fading rather than by
+   travelling off the edge, so there is nothing left to clip — the
+   casts are whole, and the overlay above is still the guarantee that
+   nothing reaches the page behind.
+   ------------------------------------------------------------------ */
+
+.stack {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: center;
+  /* THE DEEP BOTTOM PAD IS THE ROOM THE STACK NEEDS TO BE A STACK. A slide
+     is `height: 100%` of this box, and the two sheets under it are offset
+     down past its lower edge; without the extra pad here the peek would
+     run over the footer rule and under the Next control. */
+  padding: 20px 16px 76px;
+}
+
+.slide {
+  grid-area: 1 / 1;
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-width: var(--column-narrow);
+  margin-inline: auto;
+  /* EVERY SHEET IS THE SAME HEIGHT, and that is what makes this a stack
+     rather than a heap. Sized to the cell it is dealt into and capped, so
+     the buried cards sit exactly under the top one and each shows the same
+     even sliver — a card sized to its own content showed whatever text
+     happened to fall at its bottom edge, through the gap under the card
+     covering it, which read as a rendering fault rather than as a stack.
+     The cap stops a 1920 window from turning the sheet into a poster with
+     one paragraph on it. */
+  height: min(100%, 660px);
+  min-height: 0;
+  /* The stage the top card turns on. 1600px against a ~700px sheet is
+     shallow enough that a few degrees show real foreshortening and deep
+     enough that the sheet never fisheyes. */
+  perspective: 1600px;
+  transform:
+    translate3d(var(--slide-x, 0%), var(--slide-y, 0px), 0)
+    rotate(var(--slide-rot, 0deg))
+    scale(var(--slide-scale, 1));
+  opacity: var(--slide-op, 1);
+  /* One curve, 300ms, for the whole shuffle (§E). Nothing bounces.
+     `max-width` is in the list for the one wide sheet below: it is the only
+     property here that is not compositor-only, it is on one element for
+     300ms, and the alternative — a sheet that is permanently wider than the
+     five it is buried under — turns the stack's silhouette inside out. */
+  transition:
+    transform var(--duration-house) var(--ease-house),
+    opacity var(--duration-house) var(--ease-house),
+    max-width var(--duration-house) var(--ease-house);
+  /* Only the top card can be touched. That is not a workaround for the
+     overlap, it is the same statement the stack is making: you cannot
+     put a finger on a card that is underneath another one. Keyboard and
+     assistive-technology activation do not go through hit testing, so
+     neither is affected — see the accessibility note in BriefDeck.tsx. */
+  pointer-events: none;
+}
+
+.slide[data-active] {
+  pointer-events: auto;
+}
+
+/* THE ODD CARD OUT. See the note at the head of BriefDeck.tsx: one
+   sheet in the stack carries two parallel lists and is wider so they
+   can stand side by side. It is a size, not an emphasis. */
+/* THE WIDE SHEET IS WIDE WHEN IT IS THE ONE BEING READ, and the width of
+   the others when it is not. Both halves of that matter:
+
+     · at the top of the stack it is 792 rather than 696, which is what
+       lets the two parallel lists on card 04 stand side by side instead
+       of stacking into one long column;
+     · buried, it is 696 like everything else. A sheet permanently wider
+       than the five covering it sticks out at both edges of the stack,
+       and a fan whose second step is WIDER than its first reads as a
+       misalignment rather than as a larger card.
+
+   It grows as it comes to the top, on the house curve, under content that
+   is fading up from nothing — so the rewrap the growth causes happens
+   behind the fade rather than in front of a reader. */
+.slide[data-size='wide'][data-active] {
+  max-width: 792px;
+}
+
+/* ------------------------------------------------------------------
+   THE CAST
+
+   A blurred copy of the card's own silhouette, sitting under it — the
+   construction `components/artifact/**` uses, for the reason stated
+   there: a cast that is a SHAPE stays a shape when the object turns,
+   and it can counter-move on the compositor. A `box-shadow` can do
+   neither.
+
+   Two nested elements on purpose: the outer one is transformed every
+   frame, the inner one carries the blur, so the browser rasterises the
+   Gaussian once and then moves it instead of re-running it per frame.
+   ------------------------------------------------------------------ */
+
+.castWrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translate3d(
+      calc(var(--bd-nx) * -14px),
+      calc(24px + var(--bd-ny) * -12px + var(--bd-lift) * 10px),
+      0
+    )
+    scale(calc(1 + var(--bd-lift) * 0.014));
+  /* Lifting spreads the cast and lightens it, which is what selling the
+     height actually depends on. */
+  opacity: calc(0.6 - var(--bd-lift) * 0.06);
+}
+
+.cast {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-deck);
+  background-color: rgb(0 0 0);
+  filter: blur(calc(26px + var(--bd-lift) * 8px));
+}
+
+/* ------------------------------------------------------------------
+   THE CARD
+   ------------------------------------------------------------------ */
+
+.card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+  /* §E: fill and shadow, never a border. `.surface-light` on this
+     element sets the paper ground and the void ink, and — the reason
+     it is used instead of two colour declarations — it also flips
+     `--ground`, `--ink`, `--rule`, `--accent` and `--focus-ring` for
+     everything the content agent puts inside, with no props. */
+  border-radius: var(--radius-deck);
+
+  /* The contact layer only. The ambient cast is the blurred element
+     above, which is the half that has to move. */
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
+
+  /* THE TILT. `--bd-nx` / `--bd-ny` / `--bd-lift` are written by
+     ./tilt.ts on the slide and inherited here. 4.5 degrees at full
+     deflection: a sheet of paper this size turning ten would be a
+     wobble, not a weight. */
+  --brief-tilt: 4.5deg;
+  transform:
+    translateZ(calc(var(--bd-lift) * 12px))
+    rotateX(calc(var(--bd-ny) * var(--brief-tilt) * -1))
+    rotateY(calc(var(--bd-nx) * var(--brief-tilt)));
+
+  /* The card body scrolls; the deck does not. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* will-change is carried only while the tilt loop is running, so an
+   idle deck holds no promoted compositor layers. ./tilt.ts adds and
+   removes `.tilting` on the slide. */
+.tilting .card,
+.tilting .castWrap {
+  will-change: transform;
+}
+
+/* MORE AIR, SMALLER TYPE. The padding steps up where the type steps
+   down — a brief card is read, not scanned, and the measure it is read
+   at is made by the margin as much as by the column. */
+/* A BURIED SHEET IS A BLANK SHEET. Its content stays in the DOM and in the
+   accessibility tree — `opacity` hides from the eye and from nothing else,
+   which is the whole basis of the linear-document contract in BriefDeck.tsx
+   — but the sliver of it showing under the card above must not be a strip
+   of somebody else's paragraph. It fades up as the card comes to the top,
+   on the same curve as the shuffle that brings it there. */
+.slide[data-buried] .cardInner {
+  opacity: 0;
+}
+
+.cardInner {
+  padding: 30px 22px 34px;
+  transition: opacity var(--duration-house) var(--ease-house);
+}
+
+/* ------------------------------------------------------------------
+   THE FOLIO RAIL
+
+   `03 ————————— 18QD`. A sheet in a record carries its own number and
+   the reference of the file it belongs to, at the head, on a rule.
+   Smallest size the detail ramp has, on the dim ink: it is furniture,
+   and furniture that reads as loudly as the content is not furniture.
+   ------------------------------------------------------------------ */
+
+.rail {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-typestar);
+  font-size: var(--text-file-xs);
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+.railFolio {
+  color: var(--ink);
+}
+
+.railRule {
+  flex: 1 1 auto;
+  height: 1px;
+  min-width: 24px;
+  background-color: var(--rule);
+}
+
+.railRef {
+  flex: 0 0 auto;
+}
+
+/* The heading block the deck owns. Everything below `.body` is the
+   content agent's, and this file says nothing about it. */
+.eyebrow {
+  margin-block-start: 22px;
+  font-family: var(--font-mono);
+  font-size: var(--text-tele-s);
+  line-height: var(--text-tele-s--line-height);
+  letter-spacing: var(--text-tele-s--letter-spacing);
+  text-transform: uppercase;
+  color: var(--color-void-faint);
+}
+
+/* One step down the ramp — `heading` was 20-28px, this is the `body`
+   role. The card's SUBJECT is a question; the answer under it is set
+   at the heading role by `cards/ui.tsx`, so the two keep the order
+   they had while both moved down a step and the hierarchy tightened. */
+.cardTitle {
+  margin-block-start: 22px;
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+  color: var(--color-void);
+  text-wrap: balance;
+}
+
+.eyebrow + .cardTitle {
+  margin-block-start: 8px;
+}
+
+.body {
+  margin-block-start: 26px;
+}
+
+/* ------------------------------------------------------------------
+   FOOTER — Back · Next
+   ------------------------------------------------------------------ */
+
+.footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 16px;
+  border-block-start: 1px solid var(--color-hairline-soft);
+}
+
+/* The two controls are equal-weight and equal-width, so the footer does
+   not shift as the labels change and neither direction reads as the
+   preferred one. `min-width: 0` lets them shrink at 320px rather than
+   overflowing the row. */
+.control {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 172px;
+}
+
+/* ------------------------------------------------------------------
+   WIDER
+   ------------------------------------------------------------------ */
+
+@media (min-width: 768px) {
+  .header {
+    padding: 16px 24px;
+  }
+
+  .stack {
+    padding: 28px 24px 88px;
+  }
+
+  .cardInner {
+    padding: 40px 36px 44px;
+  }
+
+  .footer {
+    padding: 16px 24px 20px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .stack {
+    padding: 36px 32px 96px;
+  }
+
+  .cardInner {
+    padding: 48px 52px 52px;
+  }
+
+  /* The composition stops growing with the window: above ~1280 the
+     header and footer align to the widest sheet in the stack rather
+     than to the screen edges, so the deck reads as an object on a
+     ground instead of a full-screen application chrome. */
+  .header,
+  .footer {
+    width: 100%;
+    max-width: calc(792px + 96px);
+    margin-inline: auto;
+  }
+}
+
+/* ------------------------------------------------------------------
+   REDUCED MOTION
+   ------------------------------------------------------------------
+   §D: no shuffle and no tilt — the cards change instantly.
+
+   This block is the backstop, not the mechanism. The mechanism is
+   ./tilt.ts, which binds NO LISTENER AT ALL in this mode, and the
+   global reset in app/globals.css, which takes every transition on the
+   page to nothing. This is kept because `!important` on the three
+   channels is what beats an inline value the loop would otherwise have
+   left behind if the preference is switched on mid-session, and
+   because `will-change` on an object that will never move smoothly is
+   a wasted compositor layer.
+   ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .slide {
+    --bd-nx: 0 !important;
+    --bd-ny: 0 !important;
+    --bd-lift: 0 !important;
+    transition: none;
+  }
+
+  .tilting .card,
+  .tilting .castWrap {
+    will-change: auto;
+  }
+
+  .entry,
+  .card3d,
+  .mini,
+  .close,
+  .plateArrow,
+  .minimise {
+    transition: none;
+  }
+}

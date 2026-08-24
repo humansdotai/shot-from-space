@@ -1,98 +1,102 @@
-# Shot From Space 🛰️
+# SHOT FROM SPACE
 
-**Task a satellite to photograph your house.** Drop a pin anywhere on Earth,
-choose a capture spec, pay, and watch a live 3D mission-control globe track the
-pass to your coordinates — then get the delivered image.
+A photograph of your home, taken from orbit on request, delivered as a framed
+print. Every order is a **mission** with a code — `MISSION / 32BF`.
 
-A humans.ai lab experiment, built in the spirit of
-[0humans](https://0humans.com): an autonomous, zero-employee orbital imaging
-desk. Live at **[shot-from-space.vercel.app](https://shot-from-space.vercel.app)**.
+This repository is the complete product: landing, mission archive, purchase
+flow, Mission Control, comms, account, transactional email, and the poster
+composer that turns a satellite frame into the printed object.
 
 ---
 
-## What it does
-
-1. **Lock the target** — geocode an address (OpenStreetMap Nominatim), use your
-   browser location, type coordinates, or click the live satellite preview to
-   refine the pin.
-2. **Choose a capture** — optical or all-weather SAR, 0.5 m → 0.25 m, standard
-   or priority tasking, priced per tier.
-3. **Pay** — Stripe Checkout (live). The order round-trips entirely through the
-   Stripe session metadata, so the app is **stateless** — no database.
-4. **Watch it happen** — `/order/[id]` opens a real-time acquisition timeline
-   over a 3D globe: the tasking satellite slews to the target, acquires,
-   downlinks, and the capture is revealed. The delivered image is a **real
-   overhead photo** of the exact coordinates (Esri World Imagery, keyless).
-5. **Mission control** — `/mission-control` renders every tracked satellite,
-   propagated live in the browser from Celestrak TLEs with SGP4.
-
-## Live vs. simulated
-
-The tasking layer sits behind one interface (`lib/tasking.ts`). With a partner
-API key present it places a **real** order; without one it runs a faithful
-**simulated** pass so the whole product works out of the box.
-
-| Capability | Status |
-| --- | --- |
-| Live satellite globe (Celestrak + `satellite.js` SGP4) | ✅ real, no key |
-| Real overhead imagery of any point (Esri World Imagery) | ✅ real, no key |
-| Address geocoding (OSM Nominatim) | ✅ real, no key |
-| Stripe payment | ✅ real (live keys) |
-| **SkyFi** tasking (`POST /order-tasking`) | ✅ real (`SKYFI_API_KEY` configured) |
-| **Copernicus Sentinel-2** archive (Element84 Earth Search STAC) | ✅ real, no key |
-| Planet · Capella · Umbra · Airbus · Satellogic · Vantor | brokered live via SkyFi |
-
-SkyFi is the primary live integration — the only partner where API keys are
-self-serve *and* tasking is exposed over REST — and it brokers Planet, Umbra,
-Satellogic, ICEYE, Vantor and Sentinel behind one key. Copernicus Sentinel-2 is
-a second, fully keyless real integration (an actual archive lookup over the
-target). SkyWatch EarthCache was dropped — its API is not publicly available.
-
-Fulfilment always resolves to a real result: paid orders place a live SkyFi
-tasking order; if the SkyFi key is ever absent, a real Copernicus Sentinel-2
-archive scene over the coordinates is returned instead.
-
-## Stack
-
-- **Next.js 14** (App Router) · TypeScript · deployed on Vercel
-- **three.js + three-globe** for the 3D Earth, **satellite.js** for SGP4 orbit
-  propagation in the browser
-- **Stripe** Checkout for payment
-- No database — Stripe sessions are the source of truth
-
-## Local development
+## Run it
 
 ```bash
 npm install
-cp .env.example .env.local   # add your Stripe keys
-npm run dev                  # http://localhost:3000
+npm run dev
 ```
 
-### Environment variables
+Open http://localhost:3000.
 
-| Var | Required | Purpose |
-| --- | --- | --- |
-| `STRIPE_SECRET_KEY` | ✅ | Stripe server key |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | ✅ | Stripe browser key |
-| `NEXT_PUBLIC_SITE_URL` | — | Origin for redirect URLs (auto on Vercel) |
-| `STRIPE_WEBHOOK_SECRET` | — | Enables `/api/webhook` order dispatch |
-| `SKYFI_API_KEY` | — | Live tasking via SkyFi. Value is the `email:apikey` string, sent as the `X-Skyfi-Api-Key` header. |
+That is the whole setup. **No API keys are required.** The app boots in
+`MOCK_MODE`, creates a local SQLite database, seeds four demo missions in
+different stages, and runs every external service — Stripe, SkyFi, Gelato,
+ElevenLabs, email, geocoding — against deterministic mock adapters with
+realistic latency. A thin amber strip in the footer shows mock mode is active.
 
-## Routes
+## Walk the demo
 
-| Path | What |
-| --- | --- |
-| `/` | Landing + tasking console |
-| `/mission-control` | Full-screen live satellite globe |
-| `/order/[id]` | Post-payment acquisition tracker + delivered capture |
-| `/api/checkout` | Creates a Stripe Checkout session |
-| `/api/order/[id]` | Reads an order back from its Stripe session |
-| `/api/satellites` | Proxies + caches Celestrak TLEs (1h) |
-| `/api/geocode` | Address → coordinates (Nominatim) |
-| `/api/webhook` | Optional Stripe webhook → dispatches live tasking |
+| Screen | Path |
+|---|---|
+| Landing | `/` |
+| Process | `/how-it-works` |
+| Mission archive | `/missions` |
+| Example dossier | `/missions/[code]` |
+| Purchase (one page) | `/start` |
+| Mission Control | `/m/32BF` — final deliverable approaching |
+| | `/m/74KL` — image acquired, preview released |
+| | `/m/18QD` — capture window, re-tasked for cloud |
+| | `/m/55RA` — delivered, file closed |
+| Shared read-only view | share control on any mission page |
+| Account | `/account` (sign in as `operator@shotfromspace.com`) |
+| Design system | `/system` |
 
----
+Sign-in is passwordless. Request a link at `/auth/sign-in`; in mock mode the
+link is printed to the server console and rendered on the page.
 
-*Imagery: Esri World Imagery · Basemap textures: NASA Blue Marble · Orbital
-elements: Celestrak. Not affiliated with the imagery partners listed; those
-integrations activate only when you supply your own credentials.*
+Inside Mission Control, the amber `ADVANCE MISSION` control walks a mission
+through every stage of the state machine. It exists only while `MOCK_MODE` is
+true.
+
+## Scripts
+
+```bash
+npm run dev        # db push + seed, then next dev
+npm run build      # production build
+npm run typecheck  # tsc --noEmit
+npm run lint       # eslint
+npm run db:reset   # drop and rebuild the demo database
+npm run db:studio  # inspect the database
+```
+
+## Structure
+
+```
+app/            routes (App Router)
+  api/          REST endpoints — missions, orders, checkout, comms, auth, poster, webhooks
+  m/[code]/     Mission Control
+  s/[code]/     read-only shared mission view
+  start/        purchase
+  missions/     archive + dossiers
+  account/      orders, receipts
+  system/       design system reference
+components/
+  fui/          the entire visual vocabulary — everything else composes these
+  site/         header, footer, shell
+  landing/ discovery/ purchase/ mission/ comms/ account/
+lib/
+  types.ts      domain model + mission state machine
+  missions/     state machine, transitions, DTOs
+  integrations/ Stripe · SkyFi · Gelato · ElevenLabs · email · geocode · LLM
+  poster/       server-side poster composer
+  imagery.ts    public-domain NASA/USGS frame catalogue
+prisma/         schema + idempotent seed
+reference/      structural analysis notes
+```
+
+## Documents
+
+| File | What it is |
+|---|---|
+| `INTEGRATIONS.md` | Every service: what to provide, where to get it, where to paste it, what flips to live |
+| `PIPELINE.md` | The real capture → composition → print pipeline and where each stub plugs in |
+| `DECISIONS.md` | Judgement calls made during the build and why |
+| `REVIEW.md` | What exists, what is mocked, what needs keys, known gaps |
+| `CONTRACT.md` | The build contract — brand rules, ownership, shared interfaces |
+| `IMAGERY.md` | Attribution for every example frame |
+
+## Stack
+
+Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Prisma 6 +
+SQLite · sharp. Deployable to Vercel; see `REVIEW.md` for the one change
+required (SQLite → Postgres).

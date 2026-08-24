@@ -1,0 +1,568 @@
+/* ==================================================================
+   FRAMED POSTER — the print in a brushed aluminium moulding, hung.
+
+   Everything geometric in here is a `cqw`: 1 % of the frame's own
+   inline size, W. That is the whole trick. The moulding width, the
+   rabbet, the shadow drop, the blur and the parallax are all ratios of
+   W, so the object is identical at 320px and at 1200px with no
+   measurement, no ResizeObserver and no re-layout on resize.
+
+   ------------------------------------------------------------------
+   THE MOULDING
+   ------------------------------------------------------------------
+   --fp-k is the face width as a fraction of W. 0.026 -> a 2.6 % face,
+   which on a 60cm print is a 15.6mm moulding: the slim gallery profile,
+   not a chunky one.
+
+   Because the frame adds --fp-k to all four sides, the *outer* box is
+   not the print's ratio. Solving for it:
+
+       print width   = W(1 - 2k)
+       print height  = W(1 - 2k)(rh/rw)
+       outer height  = W[(1 - 2k)(rh/rw) + 2k]
+
+   which is the aspect-ratio declared on .frame below. The print then
+   occupies `inset: var(--fp-face)` exactly, at exactly rw:rh, with no
+   letterboxing anywhere.
+
+   ------------------------------------------------------------------
+   THE SHADOW
+   ------------------------------------------------------------------
+   A wall shadow, not a contact shadow. The frame hangs ~20mm proud of
+   the wall under a broad source above and in front, so:
+
+     - it drops rather than pooling:   Y = 3.6cqw  (3.6 % of W)
+     - it is wide penumbra:            filter blur( 3.2cqw )
+       A *filter* blur takes a standard deviation, a box-shadow blur
+       takes a radius of 2 x the deviation, so 3.2cqw of deviation is a
+       6.4cqw box-shadow blur — nearly a quarter of the print's width.
+     - it spreads a little past the object:  scale(1.014)
+     - and it is LIGHT: opacity 0.30 at rest, against the 0.42-0.50 a
+       contact shadow carries in artifact3d.module.css. A wall shadow is
+       almost entirely penumbra; a dark one reads as a sticker.
+
+   On tilt it counter-moves — the object turns one way, its cast slides
+   the other — and deepens to 0.40 as the frame comes off the wall.
+
+   At the 520px this renders at on Mission Control that is: drop 19px,
+   blur radius 33px, parallax +/-11px horizontally.
+   ================================================================== */
+
+/* Registering the three animated channels as <number> keeps them typed,
+   skips a re-parse per frame, and lets the reduced-motion override at the
+   bottom of this file beat the inline values the rAF loop writes. Custom
+   property names are never scoped by CSS Modules, so these are
+   deliberately global — and deliberately prefixed, so they cannot collide
+   with artifact3d's --a3d-* channels. */
+@property --fp-nx {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --fp-ny {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --fp-lift {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* Height-driven mode: for a fixed-height band, where sizing by width would
+   overflow the band by twice the moulding. */
+.fitHeight {
+  height: 100%;
+}
+
+/* The object's outer box. `container-type: inline-size` publishes W to every
+   descendant; the element never reads its own cqw. */
+.frame {
+  position: relative;
+  container-type: inline-size;
+  width: var(--fp-size, 100%);
+  max-width: 100%;
+  aspect-ratio: 1 / calc(
+    (1 - 2 * var(--fp-k)) * var(--fp-rh) / var(--fp-rw) + 2 * var(--fp-k)
+  );
+
+  /* Face width as a fraction of W, and the resolved length.
+     0.019 is the sleek presentation moulding: on a 50 cm print that is a
+     ~9.5 mm face. The old 0.026 (~13 mm) was modelled on the wood frame,
+     and it made a metal surround read as a chunky plastic clip-frame at
+     every size. The wood class below puts 0.026 back, because the black
+     wood profile the fulfilment adapter orders IS 12 mm — 20 mm at
+     70 x 100 — and that one is a real object with a real thickness. */
+  --fp-k: 0.019;
+  --fp-face: calc(var(--fp-k) * 100cqw);
+
+  /* Specular multiplier. Aluminium is genuinely specular, so this is on —
+     but it can only ever fall on the moulding (see .spec). */
+  --fp-spec: 1;
+
+  /* Wall cast, all terms as ratios of W. */
+  --fp-sh-y: 3.6cqw;
+  --fp-sh-x: 0.5cqw;
+  --fp-sh-drop: 1.6cqw;
+  --fp-sh-blur: 3.2cqw;
+  --fp-sh-op: 0.3;
+  --fp-sh-gain: 0.1;
+  --fp-par-x: 2.2cqw;
+  --fp-par-y: 1.4cqw;
+}
+
+.fitHeight .frame {
+  width: auto;
+  height: var(--fp-size, 100%);
+  max-height: 100%;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  /* 270cqw. Deeper than the small artifacts' 220cqw: a big object viewed
+     from a normal reading distance subtends a smaller angle, so the
+     foreshortening across it has to be gentler or it fisheyes. */
+  perspective: 270cqw;
+  perspective-origin: 50% 50%;
+}
+
+/* ------------------------------------------------------------------
+   SHADOW
+   ------------------------------------------------------------------ */
+.shadowWrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  transform:
+    translate3d(
+      calc(var(--fp-sh-x) + var(--fp-nx) * var(--fp-par-x) * -1),
+      calc(
+        var(--fp-sh-y) + var(--fp-lift) * var(--fp-sh-drop) +
+        var(--fp-ny) * var(--fp-par-y) * -1
+      ),
+      0
+    )
+    scale(calc(1.014 + var(--fp-lift) * 0.016));
+  opacity: calc(var(--fp-sh-op) + var(--fp-lift) * var(--fp-sh-gain));
+}
+
+.shadow {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0);
+  /* The blur lives on the untransformed child so the Gaussian is
+     rasterised once and then composited, never recomputed per frame. */
+  filter: blur(var(--fp-sh-blur));
+}
+
+/* ------------------------------------------------------------------
+   OBJECT
+   translateZ first, so the lift happens along the viewer's axis, then the
+   two rotations about the lifted centre. Vertical rotation is taken at
+   0.8x: the print is taller than it is wide, and equal degrees about the
+   long axis look like a wobble rather than a turn.
+   ------------------------------------------------------------------ */
+.object {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transform:
+    translateZ(calc(var(--fp-lift) * 1.8cqw))
+    rotateX(calc(var(--fp-ny) * var(--fp-tilt, 10deg) * -0.8))
+    rotateY(calc(var(--fp-nx) * var(--fp-tilt, 10deg)));
+  /* An object with mass does not have a hairline edge: the moulding's
+     outer corner is milled, not knife-cut. */
+  border-radius: 0.15cqw;
+  /* The mitre gap behind the rails. Reads as the moulding's own body, so
+     it sits mid-range in the palette below, never lighter than the face. */
+  background: #6d737a;
+}
+
+/* ------------------------------------------------------------------
+   THE FOUR RAILS
+   Each is clipped to a mitre, so the corners meet on a 45 degree joint
+   the way an extruded length does. Two stacked gradients per rail:
+   a brushed grain running ALONG the rail, then a cross-profile gradient
+   running ACROSS it — the profile gradient is what reads as extrusion.
+   The light is up and to the left, so top and left sit bright, bottom
+   and right sit dark. That difference is the whole illusion.
+   ------------------------------------------------------------------ */
+.rail {
+  position: absolute;
+  display: block;
+  z-index: 2;
+}
+
+/* Grain periods are in px on purpose: a brushed finish is a physical
+   texture with a real scale, it does not grow with the print. */
+.railTop,
+.railBottom {
+  left: 0;
+  right: 0;
+  height: var(--fp-face);
+}
+
+.railLeft,
+.railRight {
+  top: 0;
+  bottom: 0;
+  width: var(--fp-face);
+}
+
+.railTop {
+  top: 0;
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--fp-face)) 100%, var(--fp-face) 100%);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 0.11) 0 0.6px,
+      rgb(0 0 0 / 0.08) 0.6px 1.5px,
+      transparent 1.5px 2.6px
+    ),
+    linear-gradient(
+      to bottom,
+      #8d939b 0%,
+      #b9bfc7 10%,
+      #a2a8b0 34%,
+      #7d838b 68%,
+      #666c74 88%,
+      #4e545b 100%
+    );
+}
+
+.railBottom {
+  bottom: 0;
+  clip-path: polygon(var(--fp-face) 0, calc(100% - var(--fp-face)) 0, 100% 100%, 0 100%);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 0.09) 0 0.6px,
+      rgb(0 0 0 / 0.07) 0.6px 1.5px,
+      transparent 1.5px 2.6px
+    ),
+    linear-gradient(
+      to bottom,
+      #494f56 0%,
+      #5b6169 22%,
+      #6d737b 58%,
+      #81878f 86%,
+      #5e646c 100%
+    );
+}
+
+.railLeft {
+  left: 0;
+  clip-path: polygon(0 0, 100% var(--fp-face), 100% calc(100% - var(--fp-face)), 0 100%);
+  background:
+    repeating-linear-gradient(
+      to right,
+      rgb(255 255 255 / 0.1) 0 0.6px,
+      rgb(0 0 0 / 0.075) 0.6px 1.5px,
+      transparent 1.5px 2.6px
+    ),
+    linear-gradient(
+      to right,
+      #868c94 0%,
+      #afb5bd 13%,
+      #989fa7 38%,
+      #757c84 70%,
+      #595f66 100%
+    );
+}
+
+.railRight {
+  right: 0;
+  clip-path: polygon(0 var(--fp-face), 100% 0, 100% 100%, 0 calc(100% - var(--fp-face)));
+  background:
+    repeating-linear-gradient(
+      to right,
+      rgb(255 255 255 / 0.09) 0 0.6px,
+      rgb(0 0 0 / 0.07) 0.6px 1.5px,
+      transparent 1.5px 2.6px
+    ),
+    linear-gradient(
+      to right,
+      #515760 0%,
+      #646a72 26%,
+      #777d85 62%,
+      #878d95 88%,
+      #60666e 100%
+    );
+}
+
+/* The 1px outline that closes the extrusion: a lit top and left, a
+   shadowed bottom and right. Without it the moulding floats; with it the
+   object has a milled edge. */
+.edges {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.34),
+    inset 1px 0 0 0 rgb(255 255 255 / 0.2),
+    inset 0 -1px 0 0 rgb(0 0 0 / 0.5),
+    inset -1px 0 0 0 rgb(0 0 0 / 0.42);
+}
+
+/* ------------------------------------------------------------------
+   SPECULAR — aluminium only.
+   A fixed gradient band on an oversized layer that is TRANSLATED, never
+   a re-declared background-position, which would repaint every frame.
+   It is painted at z-index 1, below the opaque print at z-index 4, so
+   the highlight is occluded by the photograph rather than masked off it.
+   There is no mask to get wrong and no configuration in which a glare
+   can land on the print.
+   ------------------------------------------------------------------ */
+.spec {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  /* No blend mode: for a white source, `screen` and ordinary source-over
+     are algebraically identical, and skipping the blend keeps this a plain
+     composited layer instead of a blend group — the difference between a
+     compositor update and a repaint on every frame of the tilt. */
+  opacity: calc(var(--fp-lift) * 0.75 * var(--fp-spec));
+}
+
+.specBeam {
+  position: absolute;
+  left: -60%;
+  top: -60%;
+  width: 220%;
+  height: 220%;
+  background: linear-gradient(
+    104deg,
+    rgb(255 255 255 / 0) 32%,
+    rgb(255 255 255 / 0.1) 43%,
+    rgb(255 255 255 / 0.55) 50%,
+    rgb(255 255 255 / 0.1) 57%,
+    rgb(255 255 255 / 0) 68%
+  );
+  /* 16 % of a 220 % layer = 35 % of the frame at full deflection: the
+     highlight travels the length of a rail, it does not sit still and
+     brighten. */
+  transform: translate3d(calc(var(--fp-nx) * 16%), calc(var(--fp-ny) * 7%), 0);
+}
+
+/* ------------------------------------------------------------------
+   THE PRINT
+   Sits in the rabbet, inset by exactly the moulding face. Opaque, matte,
+   and above everything specular.
+   ------------------------------------------------------------------ */
+.window {
+  position: absolute;
+  inset: var(--fp-face);
+  z-index: 4;
+  overflow: hidden;
+  background: #0b0c0e;
+}
+
+.print {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The window is the print's ratio by construction, so cover and contain
+     agree; cover is used so a source that is off by a pixel gives a flush
+     print rather than a hairline letterbox. */
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* The rabbet. The print sits BELOW the frame face, so the moulding casts
+   onto its edges — deepest along the top, where it overhangs. This is a
+   shadow, not a sheen: it is the only thing this component ever draws on
+   the photograph, it does not move, and it does not brighten. */
+.rabbet {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 0.5),
+    inset 0 0.5cqw 0.8cqw -0.35cqw rgb(0 0 0 / 0.55),
+    inset 0.4cqw 0 0.7cqw -0.35cqw rgb(0 0 0 / 0.4),
+    inset -0.25cqw 0 0.6cqw -0.3cqw rgb(0 0 0 / 0.24),
+    inset 0 -0.25cqw 0.55cqw -0.3cqw rgb(0 0 0 / 0.22);
+}
+
+/* will-change is added by the rAF loop while a gesture is running and
+   removed the frame it settles, so an idle page holds no extra layers. */
+.active .shadowWrap,
+.active .object,
+.active .spec {
+  will-change: transform, opacity;
+}
+
+/* ------------------------------------------------------------------
+   REDUCED MOTION
+   The JS never attaches a listener in this mode; this is the second lock.
+   `!important` is what lets a stylesheet rule beat inline values the loop
+   would otherwise have left behind if the preference is switched on
+   mid-session. No tilt, no lift, no parallax, no specular — the frame and
+   its resting shadow, and nothing else.
+   ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .stage {
+    --fp-nx: 0 !important;
+    --fp-ny: 0 !important;
+    --fp-lift: 0 !important;
+  }
+
+  .spec {
+    display: none;
+  }
+}
+
+/* ==================================================================
+   BLACK WOOD MOULDING — what the fulfilment adapter actually orders.
+
+   `lib/integrations/gelato.ts` buys `..._black_wood_w-12-mm_plexiglass_
+   ..._200-gsm-matt` (w-20-mm at 70 x 100), and `MATERIALS.framedSpec` in
+   lib/guarantees.ts says "black wood frame with acrylic glazing". So the
+   surface that depicts a customer's OWN framed order has to be wood: a
+   brushed aluminium moulding on the page and a black wood one in the box
+   is a picture of a product nobody sold.
+
+   Aluminium stays the default everywhere the frame is a presentation
+   device rather than a depiction of a specific purchase.
+
+   Same four-rail extrusion, a different material. Three things change:
+
+     1. VALUE RANGE COMPRESSES. Aluminium runs #6e757d to #e6eaf0 — a
+        two-and-a-half stop spread, because a milled metal face throws a
+        real highlight. Stained wood is satin: it runs #121110 to #34302c,
+        under one stop. Keeping the metal's range and only darkening the
+        hue is what makes a "black frame" read as charcoal plastic.
+
+     2. THE GRAIN TURNS OVER. A brush is a fine unidirectional 2.6px
+        period. Wood grain is coarser, irregular and warmer, so the
+        repeating period is opened up and the stops are uneven.
+
+     3. THE SPECULAR GOES OFF. --fp-spec: 0 kills the travelling beam
+        entirely. Wood does not throw one, and the plexiglass glazing is
+        deliberately not given one either: the print underneath is matte,
+        the house rule is that nothing draws a sheen onto the photograph,
+        and a glazing reflection is the one thing that would.
+   ================================================================== */
+.wood {
+  --fp-spec: 0;
+  /* Back to the real 12 mm profile — see the note on --fp-k above. */
+  --fp-k: 0.026;
+  /* A wall shadow off a dark object reads heavier than off a light one:
+     there is no bounce back off the moulding's own face. */
+  --fp-sh-op: 0.36;
+}
+
+/* The mitre gap behind the rails. Aluminium's #9ba1a9 showing through a
+   seam on a black frame would be a bright line down the corner. */
+.wood .object {
+  background: #171615;
+}
+
+.wood .railTop {
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 0.045) 0 0.5px,
+      rgb(0 0 0 / 0.16) 0.5px 2.1px,
+      transparent 2.1px 3.4px,
+      rgb(0 0 0 / 0.1) 3.4px 4.2px,
+      transparent 4.2px 6.5px
+    ),
+    linear-gradient(
+      to bottom,
+      #2b2825 0%,
+      #34302c 14%,
+      #2a2724 40%,
+      #1f1d1b 72%,
+      #171614 90%,
+      #121110 100%
+    );
+}
+
+.wood .railBottom {
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 0.035) 0 0.5px,
+      rgb(0 0 0 / 0.14) 0.5px 2.1px,
+      transparent 2.1px 3.4px,
+      rgb(0 0 0 / 0.09) 3.4px 4.2px,
+      transparent 4.2px 6.5px
+    ),
+    linear-gradient(
+      to bottom,
+      #121110 0%,
+      #1a1917 26%,
+      #232120 62%,
+      #2a2725 88%,
+      #1b1a18 100%
+    );
+}
+
+.wood .railLeft {
+  background:
+    repeating-linear-gradient(
+      to right,
+      rgb(255 255 255 / 0.04) 0 0.5px,
+      rgb(0 0 0 / 0.15) 0.5px 2.1px,
+      transparent 2.1px 3.4px,
+      rgb(0 0 0 / 0.095) 3.4px 4.2px,
+      transparent 4.2px 6.5px
+    ),
+    linear-gradient(
+      to right,
+      #292624 0%,
+      #322e2b 16%,
+      #262422 44%,
+      #1c1a19 74%,
+      #141312 100%
+    );
+}
+
+.wood .railRight {
+  background:
+    repeating-linear-gradient(
+      to right,
+      rgb(255 255 255 / 0.032) 0 0.5px,
+      rgb(0 0 0 / 0.13) 0.5px 2.1px,
+      transparent 2.1px 3.4px,
+      rgb(0 0 0 / 0.085) 3.4px 4.2px,
+      transparent 4.2px 6.5px
+    ),
+    linear-gradient(
+      to right,
+      #151312 0%,
+      #1d1b1a 28%,
+      #252322 64%,
+      #2b2826 89%,
+      #1a1817 100%
+    );
+}
+
+/* A dark satin edge catches far less than a milled aluminium one. Carrying
+   the metal's 0.5 white inset over would draw a bright hairline round a
+   black frame — the single tell that gives away a recoloured metal. */
+.wood .edges {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.16),
+    inset 1px 0 0 0 rgb(255 255 255 / 0.1),
+    inset 0 -1px 0 0 rgb(0 0 0 / 0.6),
+    inset -1px 0 0 0 rgb(0 0 0 / 0.5);
+}

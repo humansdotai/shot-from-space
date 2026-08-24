@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shot from Space — fidelity review</title>
+<style>
+:root{--void:#08090b;--paper:#eeede8;--dim:#9aa0a6;--faint:#5f656c;--line:#23262c;--signal:#ff4d1c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--void);color:var(--paper);font:15px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:0 32px}
+header.top{padding:56px 0 32px;border-bottom:1px solid var(--line)}
+h1{font-size:40px;line-height:1.25;letter-spacing:-.02em;font-weight:400;margin:16px 0 0}
+.eyebrow{font-size:12px;letter-spacing:.04em;text-transform:uppercase;font-weight:500;color:var(--faint);margin:0}
+.lede{max-width:70ch;color:var(--dim);margin:20px 0 0}
+.note{border:1px solid var(--line);padding:16px;margin-top:24px;color:var(--dim);font-size:14px}
+h2{font-size:24px;font-weight:400;letter-spacing:-.02em;margin:0}
+.row{padding:48px 0;border-bottom:1px solid var(--line)}
+.rowhead{display:flex;align-items:baseline;justify-content:space-between;gap:24px;margin-bottom:20px}
+.rowhead span{font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.pair{display:grid;grid-template-columns:1fr 390px;gap:20px;align-items:start}
+figure{margin:0}
+figcaption{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding-bottom:8px}
+img{width:100%;height:auto;display:block;border:1px solid var(--line)}
+.miss{border:1px dashed var(--line);padding:40px;text-align:center;color:var(--faint);font-size:12px}
+.sec{padding:48px 0 8px}
+.sec p{color:var(--dim);max-width:70ch}
+.tag{display:inline-block;border:1px solid var(--signal);color:var(--signal);font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:4px 8px}
+@media(max-width:900px){.pair{grid-template-columns:1fr}}
+</style></head>
+<body><div class="wrap">
+<header class="top">
+  <p class="eyebrow">Shot from Space</p>
+  <h1>Fidelity review</h1>
+  <p class="lede">Every page of the build at 1440 and 390, against the structural reference it was measured from. Generated 2026-08-20.</p>
+  <div class="note">
+    <span class="tag">Measured, not reused</span>
+    <p style="margin:12px 0 0">The reference captures below were used to extract layout measurements only — container widths, grid and gutters, section rhythm, type metrics, colour counts and scroll behaviour, all recorded in <code>reference/TOKENS.md</code>. No text, image, video, font file or logo from the reference appears anywhere in the build. Palette, typefaces, imagery (public-domain NASA/USGS Landsat) and all copy are Shot from Space's own. These screenshots are local review material and are excluded from the repository by <code>.gitignore</code>.</p>
+  </div>
+</header>
+<div class="sec"><h2>The reference</h2><p>Captured at 1440 and 390. Measurements taken from these pages are listed in <code>reference/TOKENS.md</code>; the band-by-band map is in <code>reference/STRUCTURE.md</code>.</p></div>
+
+  <section class="row">
+    <header class="rowhead"><h2>Reference — home</h2><span>structural reference — measured, not reused</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/screens/home-1440.png" alt="Reference — home at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/screens/home-390.png" alt="Reference — home at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Reference — inner page A</h2><span>structural reference — measured, not reused</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/screens/lattice-1440.png" alt="Reference — inner page A at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/screens/lattice-390.png" alt="Reference — inner page A at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Reference — inner page B</h2><span>structural reference — measured, not reused</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/screens/arsenal-1440.png" alt="Reference — inner page B at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/screens/arsenal-390.png" alt="Reference — inner page B at 390px"></figure>
+    </div>
+  </section>
+<div class="sec"><h2>The build</h2><p>Every screen, both widths, in mock mode with seeded demo missions.</p></div>
+
+  <section class="row">
+    <header class="rowhead"><h2>Landing</h2><span>/</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/home-1440.png" alt="Landing at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/home-390.png" alt="Landing at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Process</h2><span>/how-it-works</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/how_it_works-1440.png" alt="Process at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/how_it_works-390.png" alt="Process at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Mission archive</h2><span>/missions</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/missions-1440.png" alt="Mission archive at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/missions-390.png" alt="Mission archive at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Mission dossier</h2><span>/missions/22KE</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/missions_22KE-1440.png" alt="Mission dossier at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/missions_22KE-390.png" alt="Mission dossier at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Purchase</h2><span>/start</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/start-1440.png" alt="Purchase at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/start-390.png" alt="Purchase at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Mission Control — final approach</h2><span>/m/32BF</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/m_32BF-1440.png" alt="Mission Control — final approach at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/m_32BF-390.png" alt="Mission Control — final approach at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Mission Control — image acquired</h2><span>/m/74KL</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/m_74KL-1440.png" alt="Mission Control — image acquired at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/m_74KL-390.png" alt="Mission Control — image acquired at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Mission Control — capture window</h2><span>/m/18QD</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/m_18QD-1440.png" alt="Mission Control — capture window at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/m_18QD-390.png" alt="Mission Control — capture window at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Sign in</h2><span>/auth/sign-in</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/auth_sign_in-1440.png" alt="Sign in at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/auth_sign_in-390.png" alt="Sign in at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Design system</h2><span>/system</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/system-1440.png" alt="Design system at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/system-390.png" alt="Design system at 390px"></figure>
+    </div>
+  </section>
+  <section class="row">
+    <header class="rowhead"><h2>Terms</h2><span>/legal/terms</span></header>
+    <div class="pair">
+      <figure><figcaption>Desktop · 1440</figcaption><img loading="lazy" src="reference/build/legal_terms-1440.png" alt="Terms at 1440px"></figure>
+      <figure class="m"><figcaption>Mobile · 390</figcaption><img loading="lazy" src="reference/build/legal_terms-390.png" alt="Terms at 390px"></figure>
+    </div>
+  </section>
+<footer style="padding:56px 0;color:var(--faint);font-size:12px">Shot from Space — fidelity review. Reference imagery is third-party and local-only.</footer>
+</div></body></html>

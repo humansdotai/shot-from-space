@@ -1,59 +1,52 @@
-import type { Metadata, Viewport } from "next";
-import "leaflet/dist/leaflet.css";
-import "./globals.css";
+import type { Metadata, Viewport } from 'next';
+import { GrainOverlay } from '@/components/fui';
+import { SiteFooter } from '@/components/site/SiteFooter';
+import { SiteHeader } from '@/components/site/SiteHeader';
+import { ductile, inter, plexMono, typestar } from '@/lib/fonts';
+import { SITE_URL } from '@/lib/env';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Shot From Space — task a satellite to photograph your house",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'Shot from Space — a photograph of your home, taken from orbit',
+    template: '%s — Shot from Space',
+  },
   description:
-    "Enter an address, task a satellite, pay, and get a fresh capture of your rooftop from low Earth orbit. A live mission-control globe tracks the pass in 3D.",
-  metadataBase: new URL("https://shot-from-space.vercel.app"),
+    'Give an address. A satellite is tasked. The frame is composed with its telemetry, printed locally and shipped as a finished art object.',
   openGraph: {
-    title: "Shot From Space",
+    title: 'Shot from Space',
     description:
-      "Task a real satellite to photograph your house. Pick coordinates, pay, watch the pass in a live 3D mission control.",
-    url: "https://shot-from-space.vercel.app",
-    siteName: "Shot From Space",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Shot From Space",
-    description: "Task a satellite to photograph your house.",
-  },
-  icons: {
-    icon: "/icon.svg",
+      'Give an address. A satellite is tasked. The frame is composed with its telemetry, printed locally and shipped.',
+    type: 'website',
+    url: SITE_URL,
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#05070d",
-  width: "device-width",
+  themeColor: '#08090b',
+  width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+/**
+ * Inter and Plex are the site faces and set the body. Ductile and Typestar are
+ * only DECLARED here: they are used by the mission file and the poster and by
+ * nothing else, and a webfont is not fetched until something renders it, so the
+ * two extra custom properties cost nothing on pages that never ask for them.
+ */
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin=""
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body>
-        <div className="space-bg" aria-hidden />
-        <div className="space-grid" aria-hidden />
+    <html
+      lang="en"
+      className={`${inter.variable} ${plexMono.variable} ${ductile.variable} ${typestar.variable}`}
+    >
+      <body className="min-h-dvh bg-void text-paper antialiased">
+        <GrainOverlay />
+        <SiteHeader />
         {children}
+        <SiteFooter />
       </body>
     </html>
   );
