@@ -25,7 +25,20 @@ import {
   type Region,
 } from '@/lib/types';
 
-export type MissionRow = Mission & { events?: MissionEvent[] };
+/**
+ * Columns the reader deliberately does not select. See
+ * `WRITE_ONLY_COLUMNS` in `lib/missions/index.ts` — `notifyPhone` is only
+ * ever written, and the raw row currently reaches the RSC payload, so the
+ * column is omitted at the query rather than redacted afterwards.
+ *
+ * SUBTRACTING THEM FROM THE TYPE IS THE POINT. It makes the omission a
+ * compile-time fact: nothing can read `row.notifyPhone` and no future DTO
+ * field can spread it into a public view, because as far as the type
+ * system is concerned the property is not there.
+ */
+export type WriteOnlyMissionColumn = 'notifyPhone' | 'notifyPhoneAt';
+
+export type MissionRow = Omit<Mission, WriteOnlyMissionColumn> & { events?: MissionEvent[] };
 
 /** Narrow an arbitrary stored string back onto the MissionStage union. */
 export function asStage(value: string): MissionStage | null {

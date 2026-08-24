@@ -657,6 +657,7 @@ export function MissionFlow() {
             gift={draft.gift}
             giftNote={draft.giftNote}
             paidAt={draft.paidAt}
+            receiptEmail={draft.receiptEmail}
           />
         ) : null;
     }

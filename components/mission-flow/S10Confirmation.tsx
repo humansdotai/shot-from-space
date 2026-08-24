@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { clsx as cn } from 'clsx';
 import { Button, StatusToken } from '@/components/fui';
 import { CURVE, INK, INK_DIM, RULE, SpecRow } from '@/components/purchase/fields';
@@ -109,6 +109,7 @@ export function ConfirmationSection({
   gift,
   giftNote,
   paidAt,
+  receiptEmail,
 }: {
   missionCode: string;
   missionName: string;
@@ -122,6 +123,12 @@ export function ConfirmationSection({
   gift: boolean | null;
   giftNote: string;
   paidAt: string | null;
+  /**
+   * The address the order was placed with. Sent with the notify request
+   * as the proof of purchase — a mission code alone is not a credential.
+   * See `app/api/missions/[code]/notify/route.ts`.
+   */
+  receiptEmail: string;
 }) {
   const format = getFormat(formatId);
   /* THE FINISH THAT WAS CHARGED, NOT THE ONE THAT WAS CLICKED.
@@ -303,6 +310,8 @@ export function ConfirmationSection({
         <SpecRow label="Reference" value={missionCode} mono />
       </dl>
 
+      <NotifyByPhone missionCode={missionCode} receiptEmail={receiptEmail} />
+
       <div className={cn('border-t pt-6', RULE)}>
         <p className={cn('text-label uppercase', INK_DIM)}>Follow it</p>
         <p className={cn('max-w-[var(--measure)] pt-3 text-body', INK_DIM)}>
@@ -320,5 +329,142 @@ export function ConfirmationSection({
         </div>
       </div>
     </div>
+  );
+}
+
+/* ==================================================================
+   "LET YOU KNOW WHEN WE FIND A SATELLITE"
+   ==================================================================
+   The owner's instruction: "ask for mobile hone after the purchae to
+   'let you know when we find a satellite'."
+
+   AFTER the purchase, and it shows. The order is already complete and
+   nothing here can affect it: this block sits below the mission state,
+   below the specification and above the optional account, and it is the
+   only thing on the screen a buyer can ignore without consequence. It
+   never blocks, it never nags, and there is no second ask.
+
+   ------------------------------------------------------------------
+   WHAT IT PROMISES IS EXACTLY WHAT IT DOES
+   ------------------------------------------------------------------
+   MOCK_MODE is on and no SMS provider is wired, so a number given here
+   is RECORDED and nothing is sent. Saying "we'll text you" would be a
+   promise the system cannot keep, and this file does not make it. The
+   resting copy says what the message would be about; the confirmed state
+   says the number is on the file and that nothing has been sent yet.
+   When a provider is wired, that second line is what changes.
+
+   The event named is a real one — a pass being confirmed for this
+   mission, which is the `SATELLITE_TASKED` transition the timeline
+   already shows. No frequency is invented, no delivery time, no count.
+
+   ------------------------------------------------------------------
+   CONSENT
+   ------------------------------------------------------------------
+   Submitting IS the consent, and the purpose is in the label rather
+   than in fine print underneath it. One purpose only, no marketing
+   bundled in, nothing pre-ticked, and the number can be removed again
+   from this same control — which is why the field stays editable after
+   it is stored and an empty submission clears it.
+   ================================================================== */
+function NotifyByPhone({
+  missionCode,
+  receiptEmail,
+}: {
+  missionCode: string;
+  receiptEmail: string;
+}) {
+  const fieldId = useId();
+  const noteId = useId();
+  const [phone, setPhone] = useState('');
+  const [state, setState] = useState<'idle' | 'saving' | 'stored' | 'cleared' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setState('saving');
+    setError(null);
+    try {
+      const res = await fetch(`/api/missions/${missionCode}/notify`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ phone, email: receiptEmail }),
+      });
+      const body = (await res.json().catch(() => null)) as
+        | { stored?: boolean; detail?: string }
+        | null;
+      if (!res.ok) {
+        setState('error');
+        setError(body?.detail ?? 'That did not save. Try again, or leave it — nothing is lost.');
+        return;
+      }
+      setState(body?.stored ? 'stored' : 'cleared');
+    } catch {
+      setState('error');
+      setError('The network did not answer. Nothing was saved.');
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className={cn('border-t pt-6', RULE)}>
+      <p className={cn('text-label uppercase', INK_DIM)}>Optional</p>
+
+      <label htmlFor={fieldId} className={cn('block max-w-[var(--measure)] pt-3 text-body', INK)}>
+        Leave a mobile number and we will use it to let you know when a satellite has been found
+        for this mission.
+      </label>
+
+      <p id={noteId} className={cn('max-w-[var(--measure)] pt-2 text-note', INK_DIM)}>
+        Used for that message and nothing else — never for marketing, never printed on anything.
+        Leave it blank and the mission runs exactly the same; the file is always here.
+      </p>
+
+      <div className="flex flex-wrap items-end gap-3 pt-5">
+        <input
+          id={fieldId}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          aria-describedby={noteId}
+          placeholder="+31 6 1234 5678"
+          value={phone}
+          onChange={(e) => {
+            setPhone(e.target.value);
+            if (state !== 'idle') setState('idle');
+          }}
+          className={cn(
+            /* 16px: below that iOS zooms the page on focus. 44px tall is
+               the tap floor. */
+            'h-11 min-w-0 flex-1 basis-[16rem] rounded-[var(--radius-action)] border px-3 text-[1rem]',
+            RULE,
+            'bg-transparent text-[color:var(--ink)]',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
+            'focus-visible:outline-[color:var(--accent)]',
+          )}
+        />
+        <Button type="submit" variant="secondary" size="md" loading={state === 'saving'}>
+          {state === 'stored' ? 'Update the number' : 'Tell me'}
+        </Button>
+      </div>
+
+      {/* One live region, always present, so nothing on the page moves
+          when the state changes. */}
+      <p
+        role="status"
+        aria-live="polite"
+        className={cn('max-w-[var(--measure)] pt-3 text-note', state === 'error' ? INK : INK_DIM)}
+      >
+        {state === 'stored'
+          ? // NOT "we have sent you a message" and NOT "you will receive a
+            // text": nothing is wired, so nothing is claimed. This states
+            // where the number is and what has not happened.
+            'Saved to this mission file. No message has been sent — nothing goes out until a satellite is found for you.'
+          : state === 'cleared'
+            ? 'Removed. There is no number on this mission.'
+            : state === 'error'
+              ? (error ?? '')
+              : ''}
+      </p>
+    </form>
   );
 }

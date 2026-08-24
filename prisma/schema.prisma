@@ -132,6 +132,25 @@ model Mission {
   trackingUrl         String?
   estimatedDeliveryAt DateTime?
 
+  // --- Notification ---------------------------------------------
+  /// Optional mobile number, given AFTER payment on the confirmation
+  /// screen, for one purpose only: to say when a satellite has been found
+  /// for this mission. Never required, never used for marketing, and
+  /// never printed on anything.
+  ///
+  /// STORED AS TYPED. No parsing library and no normalisation: the buyer
+  /// may be anywhere, and a "cleanup" that rejects a valid foreign number
+  /// because it does not look American is worse than storing the string.
+  /// It is validated for length and shape at the route only.
+  ///
+  /// NOTHING SENDS IT YET. MOCK_MODE is on and no SMS provider is wired,
+  /// so this column records consent and a number; it does not imply a
+  /// message was or will be dispatched. The confirmation screen says so
+  /// on screen — see components/mission-flow/S10Confirmation.tsx.
+  notifyPhone String?
+  /// When the number was given. Also the consent timestamp.
+  notifyPhoneAt DateTime?
+
   // --- Flags ----------------------------------------------------
   /// Seeded demo missions. Shown in the discovery gallery.
   isDemo    Boolean @default(false)

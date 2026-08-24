@@ -31,6 +31,15 @@ const SECTIONS = [
     body: [
       'The address you ask us to photograph, because it is the product. Your email address, because it is how a mission reaches you and how your account exists. Your delivery address, if it differs from the target. Payment is processed by Stripe; we never see or store card details.',
       'We also store the mission itself: its capture telemetry, its timeline, the frames acquired for it, and any Mission Comms correspondence.',
+      // ADDED WHEN THE CONFIRMATION SCREEN BEGAN ASKING FOR A NUMBER.
+      // Collecting a category of personal data the notice does not name
+      // is a real defect, not a documentation lapse, so this line ships
+      // with the field rather than after it. It states the single
+      // purpose, that it is optional, and that nothing is sent today —
+      // which is the truth while no SMS provider is wired. See
+      // components/mission-flow/S10Confirmation.tsx and
+      // app/api/missions/[code]/notify/route.ts.
+      'A mobile number, only if you choose to leave one after paying. It has one purpose: to tell you when a satellite has been found for your mission. It is never used for marketing, never printed on anything and never passed to another company. No message is sent today — no SMS provider is connected yet, so a number given now is held against the mission and nothing more. You can remove it from the same place you gave it.',
     ],
   },
   {
@@ -85,7 +94,7 @@ export default function PrivacyPage() {
         index="02"
         title="Privacy"
         revised="2026-08-01T00:00:00Z"
-        summary="We collect an address, an email and a payment. The address is the product. Everything else is what it takes to get a printed photograph to your door."
+        summary="We collect an address, an email and a payment, and a mobile number only if you offer one. The address is the product. Everything else is what it takes to get a printed photograph to your door."
       />
       {SECTIONS.map((s, i) => (
         <DocSection key={s.heading} index={String(i + 1).padStart(2, '0')} heading={s.heading}>

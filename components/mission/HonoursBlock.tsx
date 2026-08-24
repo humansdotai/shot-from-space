@@ -225,22 +225,40 @@ export function HonoursBlock({
           "digital" does not state on its own: nothing is posted. That stays. */}
       <p className={cn(FILE_S, FILE_LABEL)}>Held on this file · nothing is posted</p>
 
+      {/* ==================================================================
+          THE AWARDS COME FIRST. The owner pointed at this section and said
+          "here put awards".
+
+          What they were pointing at: on a 2000 x 1040 screen the top of a
+          section called DISTINCTIONS contained an eyebrow, a display
+          headline, and then TWO DENSE PARAGRAPHS — and not one distinction.
+          A reader had to scroll a full screen past prose to reach the
+          objects the section is named after. The artwork was already in
+          this file; it was just buried under the explanation of it.
+
+          So the order is inverted: one line that says what these are, then
+          the five, then everything the old two paragraphs were saying.
+          Nothing is deleted — the certificate sentence and the "nothing to
+          win" clause both survive below the list, where someone who wants
+          the detail will be looking for it.
+
+          THE LOAD-BEARING CLAIM DOES NOT MOVE. The owner instructed, in
+          capitals, that ALL DISTINCTIONS ARE DIGITAL and are never posted,
+          and `tests/unit/distinctions-are-digital.spec.ts` scans this source
+          for delivery verbs next to distinction nouns. That claim is now
+          made ONCE, in the line directly under the eyebrow, where it is the
+          first thing read rather than the fourth. Said once and clearly
+          beats said five times weakly — which is what the old paragraph
+          did, repeating "honorary", "digital", "not manufactured, packed or
+          posted" and "the print is the only object that arrives" in the
+          space of four sentences.
+          ================================================================== */}
       <p className={cn('mt-7 max-w-[var(--measure)] text-body', INK_DIM)}>
-        Five distinctions are conferred on every mission, and mission {mission.code} holds all
-        five. They are honorary and they are digital: each one is a badge held on this file and
-        shown with it, exactly as the telemetry above is held and shown. None of them is
-        manufactured, packed or posted — the print is the only object that arrives. None is
-        scarce, competitive or held back for a result, nobody awards them, and there is nothing
-        to win.
+        Five honorary distinctions are conferred on mission {mission.code} and held on its file.
+        They are digital: nothing beyond the print is manufactured or posted.
       </p>
 
-      <p className={cn('mt-4 max-w-[var(--measure)] text-body', INK_DIM)}>
-        All five are named on the certificate issued with the order, which is written for the
-        kind of mission it records: a commission certificate where a satellite was tasked for a
-        new frame, an archive certificate where an existing frame was printed.
-      </p>
-
-      <ol className={cn('mt-12 border-t xl:mt-14', RULE)}>
+      <ol className={cn('mt-10 border-t xl:mt-12', RULE)}>
         {DISTINCTIONS.map((d, i) => (
           <Citation
             key={d.name}
@@ -251,6 +269,20 @@ export function HonoursBlock({
           />
         ))}
       </ol>
+
+      {/* THE REST OF WHAT THE TWO PARAGRAPHS SAID, kept in full and moved
+          to where it belongs — after the objects it describes. */}
+      <p className={cn('mt-12 max-w-[var(--measure)] text-body', INK_DIM)}>
+        None of the five is scarce, competitive or held back for a result. Nobody awards them and
+        there is nothing to win: each is a badge held on this file and shown with it, exactly as
+        the telemetry above is held and shown.
+      </p>
+
+      <p className={cn('mt-4 max-w-[var(--measure)] text-body', INK_DIM)}>
+        All five are named on the certificate issued with the order, which is written for the
+        kind of mission it records: a commission certificate where a satellite was tasked for a
+        new frame, an archive certificate where an existing frame was printed.
+      </p>
 
       {/* Prose, so it takes `text-note` (sans) rather than the uppercase
           detail ramp — a sentence of provenance is not a label. */}

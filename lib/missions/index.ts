@@ -105,10 +105,36 @@ export function receiptNumberFor(code: string, at: Date = new Date()): string {
 /* Reads                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * COLUMNS THAT ARE WRITE-ONLY, AND WHY THEY ARE OMITTED HERE RATHER THAN
+ * REDACTED DOWNSTREAM.
+ *
+ * `toMissionDTO` builds its result field by field, so a new column is
+ * never in a DTO by accident. But the row itself reaches the React tree
+ * on `/m/[code]` and `/s/[code]`, and the two self-named `DEFECT … RSC
+ * payload` tests record that the served HTML embeds it. Until that is
+ * fixed, ANY column present on the row is present in the page source —
+ * including on a SHARED link, which is the one view a stranger can open.
+ *
+ * `notifyPhone` is only ever written (by
+ * `app/api/missions/[code]/notify/route.ts`) and never read by any
+ * surface, so the safe shape is for the shared reader not to select it at
+ * all. Omitted, it cannot leak, cannot be forgotten in a redaction list,
+ * and cannot be reintroduced by a future DTO field that spreads the row.
+ *
+ * Anything added here must be genuinely write-only. A column something
+ * needs to display belongs in the DTO with an `includePrivate` gate.
+ */
+const WRITE_ONLY_COLUMNS = { notifyPhone: true, notifyPhoneAt: true } as const;
+
 async function findRowByCode(code: string): Promise<MissionRow | null> {
   const normalized = normalizeMissionCode(code);
   if (!normalized) return null;
-  return prisma.mission.findUnique({ where: { code: normalized }, include: withEvents });
+  return prisma.mission.findUnique({
+    where: { code: normalized },
+    include: withEvents,
+    omit: WRITE_ONLY_COLUMNS,
+  });
 }
 
 export async function getMissionByCode(

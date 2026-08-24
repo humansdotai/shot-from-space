@@ -87,6 +87,35 @@ test('the operator is told the distinctions are digital', () => {
 
 test('the honours block still states it in the customer-facing copy', () => {
   const block = readFileSync('components/mission/HonoursBlock.tsx', 'utf8');
-  expect(block).toContain('honorary and they are digital');
-  expect(block.toLowerCase()).toContain('the print is the only object');
+
+  /* THE CLAIM, NOT THE SENTENCE.
+     This used to pin two exact strings — 'honorary and they are digital'
+     and 'the print is the only object'. Both were in one paragraph that
+     said the same thing four ways, and when the owner asked for the
+     awards to lead the section that paragraph was cut to one line and
+     the rest moved below the list. The assertion failed on the
+     rephrasing while the claim it exists to defend was intact and, if
+     anything, more prominent.
+
+     A test that breaks on wording trains people to edit the test. So it
+     now checks the two things that actually have to be true, in whatever
+     words the copy uses:
+
+       1. the copy calls them honorary AND digital, and
+       2. it says somewhere that nothing beyond the print is
+          manufactured, posted or shipped.
+
+     The delivery-verb scan in the tests above is what stops the copy
+     claiming the opposite; this is what stops it going quiet. */
+  const prose = block.toLowerCase();
+
+  expect(prose, 'the copy must call the distinctions honorary').toContain('honorary');
+  expect(prose, 'the copy must call them digital').toMatch(/they are digital|honorary and .{0,20}digital/);
+
+  expect(
+    prose,
+    'the copy must say nothing beyond the print is manufactured or posted',
+  ).toMatch(
+    /the print is the only object|nothing beyond the print is (manufactured|posted|shipped)/,
+  );
 });
