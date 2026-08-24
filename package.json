@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npm run env:setup && npm run db:setup && next dev --turbopack",
-    "build": "npm run env:setup && prisma generate && NEXT_DIST_DIR=.next-build next build",
+    "build": "npm run env:setup && npm run db:provider && prisma generate && NEXT_DIST_DIR=.next-build next build",
     "start": "NEXT_DIST_DIR=.next-build next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -12,13 +12,14 @@
     "test:unit": "playwright test --project=unit",
     "test:integration": "playwright test --project=integration",
     "test:e2e": "playwright test --project=e2e",
-    "postinstall": "npm run env:setup && prisma generate",
-    "db:push": "prisma db push --skip-generate",
+    "postinstall": "npm run env:setup && npm run db:provider && prisma generate",
+    "db:provider": "node scripts/select-db-provider.mjs",
+    "db:push": "npm run db:provider && prisma db push --skip-generate",
     "db:seed": "tsx --env-file-if-exists=.env prisma/seed.ts",
     "db:setup": "npm run env:setup && npm run db:push && npm run db:seed",
     "db:reset": "rm -f prisma/dev.db && npm run db:setup",
     "db:studio": "prisma studio",
-    "env:setup": "node -e \"const fs=require('fs');if(!fs.existsSync('.env')){fs.copyFileSync('.env.example','.env');console.log('created .env from .env.example')}\""
+    "env:setup": "node -e \"const fs=require('fs');if(!process.env.DATABASE_URL && !fs.existsSync('.env')){fs.copyFileSync('.env.example','.env');console.log('created .env from .env.example')}\""
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
