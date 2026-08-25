@@ -8,6 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { consumeMagicLink, createSession, sessionCookie, DEFAULT_REDIRECT } from '@/lib/auth';
+import { eyepupDistinctId, eyepupIdentify } from '@/lib/integrations/eyepup';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -22,6 +23,16 @@ export async function GET(request: Request) {
 
   try {
     const { token: sessionToken, expiresAt } = await createSession(result.userId);
+
+    // Analytics: link this person's anonymous browsing session (the eyepup
+    // cookie the snippet set) to their identity. Fire-and-forget — the helper
+    // swallows every failure so a slow proxy can never delay the sign-in.
+    void eyepupIdentify({
+      distinctId: eyepupDistinctId(request.headers.get('cookie'), result.userId),
+      userId: result.userId,
+      email: result.email,
+    });
+
     const destination = new URL(result.redirectTo ?? DEFAULT_REDIRECT, request.url);
     const response = NextResponse.redirect(destination);
     response.cookies.set(sessionCookie(sessionToken, expiresAt));

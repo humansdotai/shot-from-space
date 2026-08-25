@@ -264,7 +264,7 @@ export async function createMagicLink(
  */
 export async function consumeMagicLink(
   token: string,
-): Promise<{ userId: string; redirectTo: string | null } | null> {
+): Promise<{ userId: string; email: string; redirectTo: string | null } | null> {
   try {
     if (!token) return null;
 
@@ -287,7 +287,7 @@ export async function consumeMagicLink(
     // Second pass: catch orders placed after the link was issued.
     await adoptMissions(user.id, address);
 
-    return { userId: user.id, redirectTo: sanitizeRedirect(row.redirectTo) };
+    return { userId: user.id, email: address, redirectTo: sanitizeRedirect(row.redirectTo) };
   } catch (error) {
     console.error('[auth] consumeMagicLink failed', error);
     return null;

@@ -21,6 +21,7 @@
  * signature that does not check out.
  */
 import { verifyWebhook } from '@/lib/integrations/stripe';
+import { eyepupConversion } from '@/lib/integrations/eyepup';
 import { markMissionPaid } from '@/lib/missions';
 import { fail, ok } from '@/lib/missions/http';
 
@@ -58,6 +59,21 @@ export async function POST(req: Request) {
           currency: event.currency === 'EUR' ? 'EUR' : 'USD',
         });
         console.log(`[webhook:stripe] mission ${event.missionCode} settled`);
+
+        // Analytics: record the purchase conversion (revenue + currency).
+        // Attributed by the buyer's email; fire-and-forget, never blocks 200.
+        void eyepupConversion({
+          distinctId: event.email ?? event.missionCode,
+          name: 'mission_purchased',
+          amount: typeof event.amountMinor === 'number' ? event.amountMinor / 100 : undefined,
+          currency: event.currency ?? undefined,
+          properties: {
+            missionCode: event.missionCode,
+            stripeSessionId: event.sessionId,
+            email: event.email ?? undefined,
+          },
+        });
+
         return ok({ received: true, handled: true, missionCode: event.missionCode });
       }
 

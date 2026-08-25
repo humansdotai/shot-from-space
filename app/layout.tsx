@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import { GrainOverlay } from '@/components/fui';
 import { SiteFooter } from '@/components/site/SiteFooter';
 import { SiteHeader } from '@/components/site/SiteHeader';
@@ -43,6 +44,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${inter.variable} ${plexMono.variable} ${ductile.variable} ${typestar.variable}`}
     >
       <body className="min-h-dvh bg-void text-paper antialiased">
+        {/* Eyepup product analytics (PostHog-compatible proxy). Loads on every
+            page, deferred, so it never blocks first paint. The server half —
+            identify + conversion — lives in lib/integrations/eyepup.ts. */}
+        <Script
+          src="https://eyepup.com/t/phc_wCuGWrxAMqUM4yjzcdVCfzekMXYXCs3iFmWkSAQea4aW.js"
+          strategy="afterInteractive"
+        />
         <GrainOverlay />
         <SiteHeader />
         {children}
