@@ -125,24 +125,25 @@ export interface GelatoAdapter {
  * VERIFY against GET https://product.gelatoapis.com/v3/catalogs/posters/
  * products before placing a live order — see the header note.
  */
+// VERIFIED against the live Gelato catalogue (product.gelatoapis.com/v3) on
+// 2026-08-25. Unframed = 200 gsm uncoated poster, portrait; framed = the same
+// sheet in a black aluminium frame (w10×t22 mm) behind plexiglass. The frame is
+// aluminium, not wood — MATERIALS in lib/guarantees.ts is written to match.
 export const GELATO_PRODUCT_UID: Record<FormatId, Record<FrameOption, string>> = {
   F30: {
-    UNFRAMED:
-      'flat_product_pf_300x400-mm_pt_200-gsm-uncoated-white_cl_4-0_ct_none_prt_none_hor',
+    UNFRAMED: 'flat_300x400-mm-12x16-inch_200-gsm-80lb-uncoated_4-0_ver',
     FRAMED:
-      'framed_poster_mounted_130x180-mm-5r-x-7r_black_wood_w-12-mm_plexiglass_300x400-mm_200-gsm-matt',
+      'framed_poster_300x400-mm-12x16-inch_black_aluminum_w10xt22-mm_plexiglass_300x400-mm-12x16-inch_200-gsm-80lb-uncoated_4-0_ver',
   },
   F50: {
-    UNFRAMED:
-      'flat_product_pf_500x700-mm_pt_200-gsm-uncoated-white_cl_4-0_ct_none_prt_none_hor',
+    UNFRAMED: 'flat_500x700-mm-20x28-inch_200-gsm-80lb-uncoated_4-0_ver',
     FRAMED:
-      'framed_poster_mounted_500x700-mm_black_wood_w-12-mm_plexiglass_500x700-mm_200-gsm-matt',
+      'framed_poster_500x700-mm-20x28-inch_black_aluminum_w10xt22-mm_plexiglass_500x700-mm-20x28-inch_200-gsm-80lb-uncoated_4-0_ver',
   },
   F70: {
-    UNFRAMED:
-      'flat_product_pf_700x1000-mm_pt_200-gsm-uncoated-white_cl_4-0_ct_none_prt_none_hor',
+    UNFRAMED: 'flat_700x1000-mm-28x40-inch_200-gsm-80lb-uncoated_4-0_ver',
     FRAMED:
-      'framed_poster_mounted_700x1000-mm_black_wood_w-20-mm_plexiglass_700x1000-mm_200-gsm-matt',
+      'framed_poster_700x1000-mm-28x40-inch_black_aluminum_w10xt22-mm_plexiglass_700x1000-mm-28x40-inch_200-gsm-80lb-uncoated_4-0_ver',
   },
 };
 

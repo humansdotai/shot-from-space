@@ -79,26 +79,27 @@ export const PRIVACY_EMAIL = 'privacy@shotfromspace.com';
  * These strings must describe the Gelato product UIDs in
  * `GELATO_PRODUCT_UID`, and nothing more.
  *
- * Unframed: `..._pt_200-gsm-uncoated-white_...`
- * Framed:   `..._black_wood_w-12-mm_plexiglass_..._200-gsm-matt`
+ * Unframed: `flat_..._200-gsm-80lb-uncoated_4-0_ver`
+ * Framed:   `framed_poster_..._black_aluminum_w10xt22-mm_plexiglass_..._200-gsm-80lb-uncoated_4-0_ver`
  *
- * The words "cotton", "museum-grade", "archival" and "anti-glare" used to
- * appear in the customer copy. None of them is in the catalogue. They have
- * been removed rather than softened: a paper claim is a claim about an
- * object the buyer will hold and can check.
+ * VERIFIED against the live Gelato catalogue 2026-08-25. The frame is black
+ * aluminium (w10×t22 mm) behind plexiglass — not wood; this copy was corrected
+ * to match the real product UID. The words "cotton", "museum-grade",
+ * "archival" and "anti-glare" are deliberately absent: a paper claim is a
+ * claim about an object the buyer will hold and can check.
  */
 export const MATERIALS = {
   /** Unframed sheet. */
   paperUnframed: '200 gsm uncoated, matte',
-  /** The sheet inside a frame — Gelato mounts the framed variants on matt. */
-  paperFramed: '200 gsm matt',
+  /** The sheet inside a frame — same 200 gsm uncoated stock. */
+  paperFramed: '200 gsm uncoated, matte',
   /** Shown where one line has to cover both variants. */
   paper: '200 gsm, matte',
-  frame: 'Black wood',
-  frameLower: 'black wood',
+  frame: 'Black aluminium',
+  frameLower: 'black aluminium',
   glazing: 'acrylic (plexiglass)',
   /** One-line spec for a framed order. */
-  framedSpec: 'black wood frame with acrylic glazing',
+  framedSpec: 'black aluminium frame with acrylic glazing',
 } as const;
 
 /**

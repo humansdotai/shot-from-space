@@ -27,7 +27,7 @@
  *   the same way: the only contract is `GeoSuggestion[]`.
  * ==================================================================
  */
-import { INTEGRATIONS, isLive } from '@/lib/env';
+import { INTEGRATIONS, MOCK_MODE, isLive } from '@/lib/env';
 import { seededUnit, sleep } from '@/lib/utils';
 import { seededInt } from '@/lib/missions/telemetry';
 import type { GeoSuggestion } from '@/lib/types';
@@ -530,11 +530,92 @@ export const live: GeocodeAdapter = {
 };
 
 /* ------------------------------------------------------------------ */
+/* NOMINATIM — real geocoding, keyless                                 */
+/* ------------------------------------------------------------------ */
+/**
+ * OpenStreetMap Nominatim. Free, keyless and real: the address a customer
+ * types resolves to its ACTUAL coordinates, so the satellite is aimed at the
+ * right ground. This is the default whenever the app is not in MOCK_MODE and no
+ * Mapbox key is present — a synthesized mock address would put the frame on the
+ * wrong rooftop. Fair-use policy asks for a descriptive User-Agent and light
+ * use; results are revalidated/cached and the public wrapper falls back to the
+ * deterministic mock if the service is unreachable.
+ */
+interface NominatimResult {
+  osm_id?: number;
+  lat: string;
+  lon: string;
+  display_name?: string;
+  name?: string;
+  address?: Record<string, string>;
+}
+
+const NOMINATIM_HEADERS = {
+  'User-Agent': 'shot-from-space/1.0 (mission@shotfromspace.com)',
+  'Accept-Language': 'en',
+};
+
+function fromNominatim(r: NominatimResult, i: number): GeoSuggestion | null {
+  const lat = Number.parseFloat(r.lat);
+  const lon = Number.parseFloat(r.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const a = r.address ?? {};
+  const line1 =
+    [a.house_number, a.road].filter(Boolean).join(' ') ||
+    r.name ||
+    (r.display_name ?? '').split(',')[0] ||
+    '';
+  const city = a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? a.suburb ?? '';
+  return {
+    id: r.osm_id ? `osm_${r.osm_id}` : `osm_${i}`,
+    label: r.display_name ?? line1,
+    line1,
+    city,
+    region: a.state ?? a.region,
+    postalCode: a.postcode ?? '',
+    countryCode: (a.country_code ?? '').toUpperCase(),
+    country: a.country ?? '',
+    lat,
+    lon,
+  };
+}
+
+export const nominatim: GeocodeAdapter = {
+  async autocomplete(q, limit = 6) {
+    const url = new URL('https://nominatim.openstreetmap.org/search');
+    url.searchParams.set('q', q);
+    url.searchParams.set('format', 'jsonv2');
+    url.searchParams.set('addressdetails', '1');
+    url.searchParams.set('limit', String(limit));
+    const res = await fetch(url, { headers: NOMINATIM_HEADERS, next: { revalidate: 86400 } });
+    if (!res.ok) throw new Error(`nominatim search failed: ${res.status}`);
+    const json = (await res.json()) as NominatimResult[];
+    return json
+      .map(fromNominatim)
+      .filter((s): s is GeoSuggestion => s !== null && s.countryCode !== '');
+  },
+
+  async reverse(lat, lon) {
+    const url = new URL('https://nominatim.openstreetmap.org/reverse');
+    url.searchParams.set('lat', String(lat));
+    url.searchParams.set('lon', String(lon));
+    url.searchParams.set('format', 'jsonv2');
+    url.searchParams.set('addressdetails', '1');
+    const res = await fetch(url, { headers: NOMINATIM_HEADERS, next: { revalidate: 86400 } });
+    if (!res.ok) throw new Error(`nominatim reverse failed: ${res.status}`);
+    const json = (await res.json()) as NominatimResult;
+    return json?.lat ? fromNominatim(json, 0) : null;
+  },
+};
+
+/* ------------------------------------------------------------------ */
 /* Public surface                                                     */
 /* ------------------------------------------------------------------ */
 
 function adapter(): GeocodeAdapter {
-  return isLive('geocoder') ? live : mock;
+  if (isLive('geocoder')) return live; // Mapbox, when a key is configured
+  if (!MOCK_MODE) return nominatim; // real, keyless — the deployed default
+  return mock; // deterministic, offline
 }
 
 /** Address autocomplete. Never throws, never returns an empty list for a
