@@ -224,7 +224,9 @@ export const live: StripeAdapter = {
 
     // Wallets: omitting `payment_method_types` opts the session into the
     // dashboard's automatic payment methods, which is how Apple Pay and
-    // Google Pay surface in hosted Checkout without any client-side code.
+    // Google Pay surface in hosted Checkout. Pinning it to `card` opts back
+    // out, so neither wallet is offered — card entry only.
+    form.set('payment_method_types[0]', 'card');
     form.set('automatic_tax[enabled]', 'false');
 
     form.set('line_items[0][quantity]', '1');

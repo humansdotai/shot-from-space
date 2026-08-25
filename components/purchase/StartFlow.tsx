@@ -239,6 +239,15 @@ export function StartFlow() {
 
   const setArea = useCallback((areaKm: AreaKm) => setDraft((d) => ({ ...d, areaKm })), []);
 
+  /* Dragging the aim map repositions the capture centre. The typed street
+     address (used for shipping) is left as entered; only the coordinates the
+     satellite is pointed at move. */
+  const recenter = useCallback(
+    (lat: number, lon: number) =>
+      setDraft((d) => (d.address ? { ...d, address: { ...d.address, lat, lon } } : d)),
+    [],
+  );
+
   const chooseDedication = useCallback(
     (dedication: string) => {
       setDraft((d) => ({ ...d, dedication }));
@@ -364,6 +373,7 @@ export function StartFlow() {
               address={address}
               areaKm={draft.areaKm}
               onAreaChange={setArea}
+              onRecenter={recenter}
               onConfirm={() => go('why')}
             />
           ) : null}

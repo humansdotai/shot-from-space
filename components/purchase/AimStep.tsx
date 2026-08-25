@@ -26,11 +26,13 @@ export function AimStep({
   address,
   areaKm,
   onAreaChange,
+  onRecenter,
   onConfirm,
 }: {
   address: TargetAddress;
   areaKm: AreaKm;
   onAreaChange: (v: AreaKm) => void;
+  onRecenter: (lat: number, lon: number) => void;
   onConfirm: () => void;
 }) {
   const street = [address.line1, address.line2].filter(Boolean).join(', ');
@@ -47,7 +49,12 @@ export function AimStep({
 
       <div className="grid gap-10 xl:grid-cols-[minmax(0,38rem)_minmax(0,1fr)] xl:gap-14 xl2:gap-20">
         <div className={SCREEN_FRAME}>
-          <CaptureBlock address={address} areaKm={areaKm} onAreaChange={onAreaChange} />
+          <CaptureBlock
+            address={address}
+            areaKm={areaKm}
+            onAreaChange={onAreaChange}
+            onRecenter={onRecenter}
+          />
         </div>
 
         <div className={cn('max-w-[30rem] border-t pt-8 xl:border-t-0 xl:pt-1', RULE)}>
