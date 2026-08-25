@@ -30,7 +30,6 @@ import {
   type TierId,
 } from '@/lib/mission-flow/config';
 import {
-  completeMockCheckout,
   createOrder,
   fetchScene,
   resolveAddress,
@@ -349,40 +348,12 @@ export function ReviewSection({
           className="shrink-0 border px-2 py-1 text-label uppercase"
           style={{ borderColor: `${AMBER}99`, color: AMBER }}
         >
-          Simulated payment
+          Secure checkout
         </span>
         <p className={cn('min-w-0 flex-1 text-note', INK_DIM)}>
-          No money moves and no card details are collected. With a Stripe key configured the
-          order goes to the real hosted page instead.
+          Payment is taken on Stripe&apos;s secure hosted page. Card details are entered there,
+          never here.
         </p>
-      </div>
-
-      <PanelGroup label="Express">
-        <div className="grid grid-cols-2 gap-3">
-          {['Apple Pay', 'Google Pay'].map((wallet) => (
-            <button
-              key={wallet}
-              type="button"
-              disabled
-              aria-label={`${wallet} — simulated, not available in mock mode`}
-              className={cn(
-                'fui-disabled flex min-h-12 items-center justify-center border px-2 text-action',
-                CURVE,
-                RULE,
-                INK_DIM,
-              )}
-            >
-              {wallet}
-            </button>
-          ))}
-        </div>
-        <p className={cn('pt-3 text-note', INK_DIM)}>Wallets are simulated in mock mode.</p>
-      </PanelGroup>
-
-      <div className="flex items-center gap-4">
-        <span aria-hidden className={cn('h-px flex-1 border-t', RULE)} />
-        <span className={cn('text-label uppercase', INK_DIM)}>Or card</span>
-        <span aria-hidden className={cn('h-px flex-1 border-t', RULE)} />
       </div>
 
       <div>
@@ -427,14 +398,6 @@ export function ReviewSection({
         </div>
       ) : null}
 
-      <div className="grid gap-3">
-        <DeadField label="Card number">•••• •••• •••• ••••</DeadField>
-        <div className="grid grid-cols-2 gap-3">
-          <DeadField label="Expiry">MM / YY</DeadField>
-          <DeadField label="CVC">•••</DeadField>
-        </div>
-      </div>
-
       {error ? <ErrorPlate title="Authorisation refused">{error}</ErrorPlate> : null}
 
       {/* The two promises, once, above the button in the foot. Quoted
@@ -453,13 +416,13 @@ export function ReviewSection({
       </div>
 
       <PanelNote>
-        Mock mode: the postal record for your coordinates is resolved by the built-in geocoder
-        when the order opens, not by a live address service.
+        The postal record for your coordinates is resolved when the order opens; you then
+        complete payment on Stripe&apos;s secure hosted page.
       </PanelNote>
 
       {phase === 'paying' ? (
         <p role="status" aria-live="polite" className={cn('text-label uppercase', INK_DIM)}>
-          Authorising. Do not close this tab.
+          Opening secure checkout…
         </p>
       ) : null}
     </div>
@@ -709,28 +672,6 @@ function useScene(lat: number | null, lon: number | null): SceneInfo | null {
   return scene;
 }
 
-/**
- * A drawn, inert field. Nothing can be typed into a mock card input, so
- * these are not disabled inputs — they are not inputs at all.
- */
-function DeadField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <p className={cn('pb-2 text-label uppercase', INK_DIM)}>{label}</p>
-      <div
-        className={cn(
-          'fui-disabled flex h-12 min-w-0 items-center overflow-hidden border px-4 text-[1rem] tracking-[0.2em]',
-          CURVE,
-          RULE,
-          INK_DIM,
-        )}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /* The commission itself                                               */
 /* ------------------------------------------------------------------ */
@@ -836,15 +777,12 @@ export function useCommission({
       return;
     }
 
-    const settled = await completeMockCheckout(order.data.missionCode);
-    if (!settled.ok) {
-      setPhase('failed');
-      setError(settled.message);
-      return;
-    }
-
-    onPaid(settled.data.toUpperCase());
-  }, [phase, target, receiptEmail, tier, frame, formatId, gift, giftNote, onPaid]);
+    // Payment is completed on Stripe's hosted checkout. Its success_url returns
+    // the buyer to /m/{code}?paid=1, so there is no in-page settle and no card
+    // detail is ever collected here. In mock mode the URL is the local checkout
+    // page, which settles the same way.
+    window.location.assign(order.data.checkoutUrl);
+  }, [phase, target, receiptEmail, tier, frame, formatId, gift, giftNote]);
 
   return { phase, error, emailError, pay, clearEmailError };
 }
