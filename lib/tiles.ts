@@ -208,24 +208,53 @@ function mapbox(token: string): TileProvider {
 }
 
 /**
+ * Esri World Imagery — the sharp, keyless satellite basemap the earlier build
+ * of this product used, and the one the owner asked to bring back: aerial/
+ * satellite composite down to roughly 0.3–1 m, served to z19+ worldwide, so a
+ * rooftop actually resolves under the framing tool. Path order is {z}/{y}/{x}
+ * (ArcGIS puts the row before the column, like the EOX WMTS above).
+ *
+ * LICENSING NOTE: Esri's terms scope this service to ArcGIS licence holders.
+ * For a strictly-licensed commercial basemap, set MAPTILER_KEY or
+ * MAPBOX_ACCESS_TOKEN and this is bypassed automatically (both are sharper and
+ * carry a commercial licence). The attribution below always names Esri while it
+ * is the one serving the pixels.
+ */
+const esri: TileProvider = {
+  id: 'esri-world-imagery',
+  label: 'ESRI WORLD IMAGERY',
+  name: 'Esri World Imagery',
+  attribution: 'Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+  attributionHref: 'https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9',
+  minZoom: 1,
+  maxZoom: 19,
+  nativeMetres: 0.5,
+  keyed: false,
+  url: (z, x, y) =>
+    `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
+};
+
+/**
  * Which provider is serving. Server-side only: `MAPTILER_KEY` and
  * `MAPBOX_ACCESS_TOKEN` are not `NEXT_PUBLIC_*`, so on the client this
  * always resolves to the keyless default — which is exactly why the
  * component asks `/api/tiles/meta` instead of calling this.
  *
- * MapTiler is preferred over Mapbox when both are present only because
- * its free tier is the friendlier one to leave running on a demo.
+ * A commercial key wins when present (MapTiler preferred — friendlier free
+ * tier); otherwise the keyless default is Esri World Imagery, the sharp basemap
+ * the previous build used. `s2cloudless` remains available as the failure-path
+ * fallback below.
  */
 export function activeProvider(): TileProvider {
   const mt = process.env.MAPTILER_KEY ?? '';
   if (mt) return maptiler(mt);
   const mb = process.env.MAPBOX_ACCESS_TOKEN ?? '';
   if (mb) return mapbox(mb);
-  return s2cloudless;
+  return esri;
 }
 
 /** Exposed for tests and for the failure-path fallback. */
-export const KEYLESS_PROVIDER = s2cloudless;
+export const KEYLESS_PROVIDER = esri;
 
 /* ------------------------------------------------------------------ */
 /* The client-safe descriptor                                         */
@@ -270,4 +299,4 @@ export function describeProvider(p: TileProvider): TileDescriptor {
  * answers. It is the keyless one, which is correct on a fresh clone,
  * so the common case never flashes the wrong attribution.
  */
-export const DEFAULT_DESCRIPTOR: TileDescriptor = describeProvider(s2cloudless);
+export const DEFAULT_DESCRIPTOR: TileDescriptor = describeProvider(esri);
