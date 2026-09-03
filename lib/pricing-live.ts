@@ -35,9 +35,20 @@ const TTL_MS = 60 * 60 * 1000;
 
 /* ---------------- FX ---------------- */
 let fxCache: { rate: number; at: number } | null = null;
+let fxInflight: Promise<number> | null = null;
 
 export async function usdToEur(): Promise<number> {
   if (fxCache && Date.now() - fxCache.at < TTL_MS) return fxCache.rate;
+  // One fetch per cold cache, however many quotes ask at once.
+  if (!fxInflight) {
+    fxInflight = fetchUsdToEur().finally(() => {
+      fxInflight = null;
+    });
+  }
+  return fxInflight;
+}
+
+async function fetchUsdToEur(): Promise<number> {
   for (const url of [
     'https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR',
     'https://open.er-api.com/v6/latest/USD',
@@ -59,6 +70,7 @@ export async function usdToEur(): Promise<number> {
 
 /* ---------------- SkyFi ---------------- */
 const skyfiCache = new Map<string, { v: ImageryRates; at: number }>();
+const skyfiInflight = new Map<string, Promise<ImageryRates>>();
 
 function wktSquare(lat: number, lon: number, areaKm: number): string {
   const dLat = areaKm / 2 / 111.32;
@@ -71,7 +83,18 @@ export async function skyfiRates(lat?: number, lon?: number, areaKm = DEFAULT_AR
   const key = lat != null && lon != null ? `${lat.toFixed(2)},${lon.toFixed(2)}` : 'default';
   const hit = skyfiCache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.v;
+  // A price table asks for the same target 18 times at once; SkyFi is asked once.
+  let inflight = skyfiInflight.get(key);
+  if (!inflight) {
+    inflight = fetchSkyfiRates(key, lat, lon, areaKm).finally(() => {
+      skyfiInflight.delete(key);
+    });
+    skyfiInflight.set(key, inflight);
+  }
+  return inflight;
+}
 
+async function fetchSkyfiRates(key: string, lat?: number, lon?: number, areaKm = DEFAULT_AREA_KM): Promise<ImageryRates> {
   const apiKey = INTEGRATIONS.skyfi.apiKey;
   if (!apiKey) return FALLBACK_RATES;
   const base = INTEGRATIONS.skyfi.baseUrl;
@@ -109,15 +132,18 @@ export async function skyfiRates(lat?: number, lon?: number, areaKm = DEFAULT_AR
       signal: AbortSignal.timeout(8000),
     });
     const d = (await res.json()) as { archives?: { provider?: string; resolution?: string; priceForOneSquareKm?: number; minSqKm?: number }[] };
-    const priced = (d.archives ?? []).filter(
-      (a) => (a.priceForOneSquareKm ?? 0) > 0 && ['SUPER HIGH', 'VERY HIGH', 'HIGH'].includes(a.resolution ?? ''),
-    );
-    priced.sort((a, b) => (a.priceForOneSquareKm ?? 0) - (b.priceForOneSquareKm ?? 0));
-    const best = priced[0];
+    // A rooftop needs ≈0.5 m: prefer the cheapest priced VERY HIGH / SUPER HIGH
+    // scene; fall back to HIGH (≈1 m) only when nothing sharper is on offer.
+    const priced = (d.archives ?? []).filter((a) => (a.priceForOneSquareKm ?? 0) > 0);
+    const byPrice = (a: { priceForOneSquareKm?: number }, b: { priceForOneSquareKm?: number }) =>
+      (a.priceForOneSquareKm ?? 0) - (b.priceForOneSquareKm ?? 0);
+    const sharp = priced.filter((a) => ['SUPER HIGH', 'VERY HIGH'].includes(a.resolution ?? '')).sort(byPrice);
+    const high = priced.filter((a) => a.resolution === 'HIGH').sort(byPrice);
+    const best = sharp[0] ?? high[0];
     if (best?.priceForOneSquareKm) {
       rates.archivePerKm2 = best.priceForOneSquareKm;
       rates.archiveMinKm2 = best.minSqKm ?? 1;
-      rates.archiveProvider = best.provider ?? 'SKYFI';
+      rates.archiveProvider = `${best.provider ?? 'SKYFI'} ${best.resolution ?? ''}`.trim();
       rates.source = 'skyfi';
     }
   } catch {
