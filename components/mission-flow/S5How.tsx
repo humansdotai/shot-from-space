@@ -2,26 +2,11 @@
 
 import { useMemo } from 'react';
 import { clsx as cn } from 'clsx';
-import { OrbitGlyph } from '@/components/satellites/OrbitGlyph';
 import { INK, INK_DIM, RULE } from '@/components/purchase/fields';
-import {
-  CAPTURE_GSD_BASIS,
-  CAPTURE_GSD_CM,
-  PASS_ATTRIBUTION,
-  PASS_MIN_ELEVATION_DEG,
-} from '@/lib/mission-flow/config';
-import { FieldRow, FieldTable, PanelGroup, PanelHead, PanelNote, PanelStack } from './Panel';
-import {
-  fixed,
-  groupDigits,
-  phaseOf,
-  untilLabel,
-  useLiveClock,
-  useLiveLook,
-  useSkyReading,
-  utcStamp,
-} from './PassGeometry';
-import type { MissionTarget } from '@/lib/mission-flow/state';
+import { CAPTURE_GSD_CM, PASS_ATTRIBUTION } from '@/lib/mission-flow/config';
+import { PanelGroup, PanelHead, PanelNote, PanelStack } from './Panel';
+import { fixed, untilLabel, useLiveClock, useSkyReading } from './PassGeometry';
+import { AREA_KM_MAX, AREA_KM_MIN, type MissionTarget } from '@/lib/mission-flow/state';
 
 /**
  * SECTION 2 — FRAMING (was screen 5, `How it works`).
@@ -74,111 +59,63 @@ import type { MissionTarget } from '@/lib/mission-flow/state';
  * than a panel note could, and saying it twice would make the second one
  * look like a different claim.
  */
-export function FramingSection({ target }: { target: MissionTarget }) {
+export function FramingSection({
+  target,
+  areaKm,
+  onAreaKm,
+  priceLabel,
+}: {
+  target: MissionTarget;
+  /** Footprint, km per side. */
+  areaKm: number;
+  onAreaKm: (areaKm: number) => void;
+  /** The live total for the current configuration, e.g. "Commission · €296.34". */
+  priceLabel?: string;
+}) {
   const sky = useSkyReading(target.lat, target.lon);
   const seed = useMemo(() => new Date().toISOString(), []);
   const now = useLiveClock(seed);
   const crossing = sky.reading?.next ?? null;
-  const { look } = useLiveLook(crossing, target.lat, target.lon, now);
-
-  const lines = [
-    {
-      n: '01',
-      text: crossing
-        ? `A spacecraft crosses this sky. The next one clears the horizon in ${untilLabel(crossing.risesAt, now).toLowerCase()} and climbs to ${fixed(crossing.peakElevation, 0)}°.`
-        : 'A spacecraft crosses this sky. It is not overhead now and it will not be for long when it is — a pass is minutes.',
-    },
-    {
-      n: '02',
-      text: `Near the top of that arc the sensor is tasked at ${CAPTURE_GSD_CM} cm per pixel.`,
-    },
-    {
-      n: '03',
-      text: 'The frame you place here is what it is pointed at. Your print carries the telemetry of that pass.',
-    },
-  ];
+  const px = Math.round((areaKm * 1000) / (CAPTURE_GSD_CM / 100));
+  const km = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 
   return (
     <PanelStack>
-      <PanelHead eyebrow="Capture · 02" title="Where the frame falls.">
-        Position the capture footprint over the ground you want in the print.
+      <PanelHead eyebrow="Capture · 02" title="Frame the ground.">
+        Drag the map to place the footprint. Slide to choose how much ground the print covers.
       </PanelHead>
 
-      <ol className="flex flex-col">
-        {lines.map((line) => (
-          <li key={line.n} className={cn('flex items-baseline gap-4 border-b py-3.5', RULE)}>
-            <span
-              data-telemetry
-              className={cn('shrink-0 font-mono text-tele uppercase tabular-nums', INK_DIM)}
-            >
-              {line.n}
-            </span>
-            <span className={cn('max-w-[var(--measure)] text-body', INK)}>{line.text}</span>
-          </li>
-        ))}
-      </ol>
+      <PanelGroup label="View" hint={`${km(areaKm)} × ${km(areaKm)} km`}>
+        <input
+          type="range"
+          min={AREA_KM_MIN}
+          max={AREA_KM_MAX}
+          step={0.1}
+          value={areaKm}
+          aria-label="Footprint width in kilometres"
+          aria-valuetext={`${km(areaKm)} kilometres`}
+          onChange={(e) => onAreaKm(Number(e.target.value))}
+          className="block w-full cursor-pointer accent-[color:var(--accent)]"
+        />
+        <div className={cn('mt-2 flex justify-between font-mono text-tele uppercase tabular-nums', INK_DIM)}>
+          <span>{AREA_KM_MIN} km · a house and its street</span>
+          <span>{AREA_KM_MAX} km · a district</span>
+        </div>
+        <p className={cn('mt-3 text-note', INK)}>
+          ≈ {px.toLocaleString('en-GB')} px across at {CAPTURE_GSD_CM} cm per pixel
+          {priceLabel ? ` · ${priceLabel}` : ''}
+        </p>
+      </PanelGroup>
 
       {crossing ? (
-        <PanelGroup
-          label="The pass those numbers came from"
-          hint="Live"
-          note={
-            <>
-              Height is what makes the difference to the frame. A pass low on the horizon sees a
-              roof from the side, through several times the air; one near the top of the sky looks
-              almost straight down — which is the same thing the resolution note below means by how
-              far off nadir the spacecraft flies.
-            </>
-          }
-        >
-          {/* The glyph's ring is this spacecraft's real inclination and its
-              marker is its real mean anomaly advanced to this second. It is
-              an icon that is also a readout — the distinction
-              `components/satellites/OrbitGlyph.tsx` draws, and the reason it
-              is allowed to move at all. */}
-          <div className="flex items-center gap-4 pb-4">
-            <OrbitGlyph
-              inclination={crossing.inclination}
-              phase={phaseOf(crossing, now)}
-              size={56}
-              className={cn(
-                'shrink-0',
-                look && look.elevation >= PASS_MIN_ELEVATION_DEG
-                  ? 'text-[color:var(--accent)]'
-                  : INK_DIM,
-              )}
-            />
-            <p className={cn('min-w-0 text-note', INK_DIM)}>
-              {crossing.name}, {crossing.operator}
-              {look ? `, ${groupDigits(look.rangeKm)} km away as you read this` : ''}.
-            </p>
-          </div>
-
-          <FieldTable>
-            <FieldRow
-              label="Rises in"
-              value={untilLabel(crossing.risesAt, now)}
-              note={`${utcStamp(crossing.risesAt)} — when it clears your horizon.`}
-            />
-            <FieldRow
-              label="Highest point"
-              value={`${fixed(crossing.peakElevation, 0)}°`}
-              note={`Above the horizon. ${PASS_MIN_ELEVATION_DEG}° is the floor for imaging.`}
-            />
-            <FieldRow
-              label="Above the horizon"
-              value={fixed(crossing.durationMin, 0)}
-              unit="min"
-              note="Horizon to horizon."
-            />
-            <FieldRow label="Ground sample ordered" value={String(CAPTURE_GSD_CM)} unit="cm/px" />
-          </FieldTable>
-        </PanelGroup>
+        <p className={cn('border-t py-3.5 text-note', RULE, INK_DIM)}>
+          Next pass: {crossing.name} ({crossing.operator}) clears the horizon in{' '}
+          {untilLabel(crossing.risesAt, now).toLowerCase()} and climbs to{' '}
+          {fixed(crossing.peakElevation, 0)}°.
+        </p>
       ) : null}
 
-      <PanelNote>
-        {CAPTURE_GSD_BASIS} {PASS_ATTRIBUTION}
-      </PanelNote>
+      <PanelNote>{PASS_ATTRIBUTION}</PanelNote>
     </PanelStack>
   );
 }

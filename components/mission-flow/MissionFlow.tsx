@@ -30,7 +30,6 @@ import {
 import { resolveAddress, toTargetAddress } from '@/lib/mission-flow/api';
 import type { Currency } from '@/lib/types';
 import { setLivePriceTable, type PriceTable } from '@/lib/pricing-model';
-import { CAPTURE_AREA_KM } from './capture';
 import { Configurator } from './Configurator';
 import { ClosedRail, SectionRail } from './SectionRail';
 import { PanelFoot, type PrimaryAction } from './PanelFoot';
@@ -155,27 +154,32 @@ export function MissionFlow() {
 
   const liveLat = draft.target?.lat;
   const liveLon = draft.target?.lon;
+  const liveArea = draft.areaKm;
   const liveCurrency: Currency =
     currencyOverride ?? currencyForTarget(draft.target?.address?.countryCode);
   useEffect(() => {
     let cancelled = false;
-    const q = new URLSearchParams({ currency: liveCurrency, area: String(CAPTURE_AREA_KM) });
+    const q = new URLSearchParams({ currency: liveCurrency, area: String(liveArea) });
     if (typeof liveLat === 'number' && typeof liveLon === 'number') {
       q.set('lat', liveLat.toFixed(4));
       q.set('lon', liveLon.toFixed(4));
     }
-    fetch(`/api/pricing?${q.toString()}`)
-      .then((r) => r.json())
-      .then((d: { currency?: Currency; table?: PriceTable }) => {
-        if (cancelled || !d.table || (d.currency !== 'USD' && d.currency !== 'EUR')) return;
-        setLivePriceTable(d.currency, d.table);
-        setPriceRev((n) => n + 1);
-      })
-      .catch(() => {});
+    // Debounced: the view slider changes the area ten times a second.
+    const t = window.setTimeout(() => {
+      fetch(`/api/pricing?${q.toString()}`)
+        .then((r) => r.json())
+        .then((d: { currency?: Currency; table?: PriceTable }) => {
+          if (cancelled || !d.table || (d.currency !== 'USD' && d.currency !== 'EUR')) return;
+          setLivePriceTable(d.currency, d.table);
+          setPriceRev((n) => n + 1);
+        })
+        .catch(() => {});
+    }, 250);
     return () => {
       cancelled = true;
+      window.clearTimeout(t);
     };
-  }, [liveLat, liveLon, liveCurrency]);
+  }, [liveLat, liveLon, liveArea, liveCurrency]);
   void priceRev;
 
   /* --- Arrival ---------------------------------------------------- */
@@ -405,6 +409,7 @@ export function MissionFlow() {
     frame: draft.frame,
     tier: draft.tier,
     currency,
+    areaKm: draft.areaKm,
     gift: draft.gift,
     giftNote: draft.giftNote,
     receiptEmail: draft.receiptEmail,
@@ -616,7 +621,14 @@ export function MissionFlow() {
       case 'framing':
         /* The section names the next real crossing of these coordinates, so
            it needs them. `target` is already the guard on this branch. */
-        return target ? <FramingSection target={target} /> : null;
+        return target ? (
+          <FramingSection
+            target={target}
+            areaKm={draft.areaKm}
+            onAreaKm={(areaKm) => patch({ areaKm })}
+            priceLabel={`${TIER_COPY[draft.tier].name} · ${formatPrice(totalMinor, currency)}`}
+          />
+        ) : null;
 
       case 'mission':
         return (

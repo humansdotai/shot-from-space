@@ -20,8 +20,10 @@ import {
   FALLBACK_RATES,
   FALLBACK_USD_EUR,
   PRINT_FALLBACK,
+  bestArchiveScene,
   imageryUsd,
   quoteFromParts,
+  type ArchiveScene,
   type ImageryRates,
   type PriceTable,
   type PricingTier,
@@ -132,18 +134,30 @@ async function fetchSkyfiRates(key: string, lat?: number, lon?: number, areaKm =
       signal: AbortSignal.timeout(8000),
     });
     const d = (await res.json()) as { archives?: { provider?: string; resolution?: string; priceForOneSquareKm?: number; minSqKm?: number }[] };
-    // A rooftop needs ≈0.5 m: prefer the cheapest priced VERY HIGH / SUPER HIGH
-    // scene; fall back to HIGH (≈1 m) only when nothing sharper is on offer.
-    const priced = (d.archives ?? []).filter((a) => (a.priceForOneSquareKm ?? 0) > 0);
-    const byPrice = (a: { priceForOneSquareKm?: number }, b: { priceForOneSquareKm?: number }) =>
-      (a.priceForOneSquareKm ?? 0) - (b.priceForOneSquareKm ?? 0);
-    const sharp = priced.filter((a) => ['SUPER HIGH', 'VERY HIGH'].includes(a.resolution ?? '')).sort(byPrice);
-    const high = priced.filter((a) => a.resolution === 'HIGH').sort(byPrice);
-    const best = sharp[0] ?? high[0];
-    if (best?.priceForOneSquareKm) {
-      rates.archivePerKm2 = best.priceForOneSquareKm;
-      rates.archiveMinKm2 = best.minSqKm ?? 1;
-      rates.archiveProvider = `${best.provider ?? 'SKYFI'} ${best.resolution ?? ''}`.trim();
+    // Keep every priced scene (one per provider × resolution, cheapest); the
+    // quote picks the lowest BILLED total for the actual footprint, ≈0.5 m
+    // preferred over ≈1 m (lib/pricing-model.ts → bestArchiveScene).
+    const seen = new Map<string, ArchiveScene>();
+    for (const a of d.archives ?? []) {
+      if (!(a.priceForOneSquareKm && a.priceForOneSquareKm > 0)) continue;
+      const scene: ArchiveScene = {
+        provider: a.provider ?? 'SKYFI',
+        resolution: a.resolution ?? 'HIGH',
+        perKm2: a.priceForOneSquareKm,
+        minKm2: a.minSqKm ?? 1,
+      };
+      const k = `${scene.provider}/${scene.resolution}`;
+      const prev = seen.get(k);
+      if (!prev || scene.perKm2 * Math.max(1, scene.minKm2) < prev.perKm2 * Math.max(1, prev.minKm2)) seen.set(k, scene);
+    }
+    if (seen.size > 0) {
+      rates.archiveScenes = [...seen.values()];
+      const best = bestArchiveScene(rates.archiveScenes, Math.max(areaKm, 1) ** 2);
+      if (best) {
+        rates.archivePerKm2 = best.perKm2;
+        rates.archiveMinKm2 = best.minKm2;
+        rates.archiveProvider = `${best.provider} ${best.resolution}`;
+      }
       rates.source = 'skyfi';
     }
   } catch {

@@ -23,6 +23,7 @@
  */
 
 import type { FormatId, FrameOption, TargetAddress } from '@/lib/types';
+import { DEFAULT_AREA_KM } from '@/lib/pricing-model';
 import {
   DEFAULT_POSTER_STYLE_ID,
   isPosterStyleId,
@@ -73,6 +74,8 @@ export interface MissionDraft {
   /** The Design section. */
   formatId: FormatId;
   frame: FrameOption;
+  /** Capture footprint, km per side — the framing step's view slider. */
+  areaKm: number;
   /**
    * How the sheet is divided between the picture and the record.
    * `lib/poster/styles.ts` is the catalogue and the only place the
@@ -110,12 +113,23 @@ export interface MissionDraft {
   paidAt: string | null;
 }
 
+/** The view slider's range, km per side. 0.5 km is a house and its street; 5 km a district. */
+export const AREA_KM_MIN = 0.5;
+export const AREA_KM_MAX = 5;
+
+export function clampAreaKm(v: unknown): number {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+  if (!Number.isFinite(n)) return DEFAULT_AREA_KM;
+  return Math.round(Math.min(AREA_KM_MAX, Math.max(AREA_KM_MIN, n)) * 10) / 10;
+}
+
 export const DEFAULT_DRAFT: MissionDraft = {
   target: null,
   gift: null,
   missionName: defaultMissionName(),
   formatId: DEFAULT_FORMAT_ID,
   frame: DEFAULT_FRAME,
+  areaKm: DEFAULT_AREA_KM,
   posterStyle: DEFAULT_POSTER_STYLE_ID,
   earliest: null,
   window: null,
@@ -265,6 +279,7 @@ export function loadFlow(): StoredFlow | null {
       ? (d.formatId as FormatId)
       : DEFAULT_DRAFT.formatId,
     frame: d.frame === 'FRAMED' ? 'FRAMED' : 'UNFRAMED',
+    areaKm: clampAreaKm(d.areaKm),
     posterStyle: isPosterStyleId(d.posterStyle) ? d.posterStyle : DEFAULT_DRAFT.posterStyle,
     // A stored preference that has since gone stale is dropped rather
     // than carried: a date in the past is not a preference any more, and

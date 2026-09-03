@@ -98,8 +98,8 @@ export interface CreateOrderInput {
   /** Buyer-selected billing currency. Absent → derived from the address. */
   currency?: 'USD' | 'EUR';
   email: string;
-  /** Capture footprint in km. Additive to the contract shape; recorded on the order. */
-  areaKm: AreaKm;
+  /** Capture footprint in km per side (0.4–5). Recorded on the order and priced by it. */
+  areaKm: AreaKm | number;
   /**
    * The line printed at the foot of the mission sheet. Omitted rather than
    * sent empty — the route treats an absent dedication as "no line", and a

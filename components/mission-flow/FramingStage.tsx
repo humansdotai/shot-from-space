@@ -30,10 +30,13 @@ import { CAPTURE_AREA_KM } from './capture';
 export function FramingStage({
   lat,
   lon,
+  areaKm = CAPTURE_AREA_KM,
   onCentre,
 }: {
   lat: number;
   lon: number;
+  /** Footprint, km per side — from the framing step's view slider. */
+  areaKm?: number;
   /** The committed frame centre. Debounced — see above. */
   onCentre: (next: { lat: number; lon: number }) => void;
 }) {
@@ -67,7 +70,7 @@ export function FramingStage({
     <FrameOnMap
       lat={lat}
       lon={lon}
-      areaKm={CAPTURE_AREA_KM}
+      areaKm={areaKm}
       onChange={onChange}
       className="h-full w-full"
     />

@@ -764,6 +764,7 @@ export function useCommission({
   frame,
   tier,
   currency,
+  areaKm,
   gift,
   giftNote,
   receiptEmail,
@@ -774,6 +775,8 @@ export function useCommission({
   frame: FrameOption;
   tier: TierId;
   currency: Currency;
+  /** Footprint, km per side — the framing step's view slider. */
+  areaKm: number;
   gift: boolean | null;
   giftNote: string;
   receiptEmail: string;
@@ -833,7 +836,7 @@ export function useCommission({
       frame: activeFrame,
       currency,
       email: receiptEmail.trim(),
-      areaKm: 2,
+      areaKm,
       dedication: gift && giftNote.trim() ? giftNote.trim() : undefined,
     });
 
@@ -853,7 +856,7 @@ export function useCommission({
     setOpened({ missionCode: order.data.missionCode, missionLink, checkoutUrl: order.data.checkoutUrl });
     setPhase('opened');
     window.setTimeout(() => window.location.assign(order.data.checkoutUrl), 3500);
-  }, [phase, target, receiptEmail, tier, frame, formatId, currency, gift, giftNote]);
+  }, [phase, target, receiptEmail, tier, frame, formatId, currency, areaKm, gift, giftNote]);
 
   return { phase, opened, error, emailError, pay, clearEmailError };
 }

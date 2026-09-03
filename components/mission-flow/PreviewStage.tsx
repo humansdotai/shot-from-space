@@ -13,7 +13,6 @@ import { telemetryCoords } from '@/lib/mission-flow/entry';
 import { RevealStage } from './S1Reveal';
 import { FramingStage } from './FramingStage';
 import { PosterStage } from './PosterStage';
-import { CAPTURE_AREA_KM } from './capture';
 import { MissionGround } from './MissionGround';
 import { OrbitGlyph } from '@/components/satellites';
 import { ageLabel, standbyPhase, useFleetStandby, useLiveClock } from './PassGeometry';
@@ -181,7 +180,7 @@ export function PreviewStage({
                  would read as two different claims. */
             >
               {target ? (
-                <FramingStage lat={target.lat} lon={target.lon} onCentre={onCentre} />
+                <FramingStage lat={target.lat} lon={target.lon} areaKm={draft.areaKm} onCentre={onCentre} />
               ) : (
                 <PreviewWaiting>There is nothing to frame until a place is named.</PreviewWaiting>
               )}
@@ -263,7 +262,7 @@ export function PreviewStage({
                         value: telemetryCoords(target.lat, target.lon),
                         span: 2 as const,
                       },
-                      { label: 'Capture', value: `${CAPTURE_AREA_KM} × ${CAPTURE_AREA_KM} KM` },
+                      { label: 'Capture', value: `${draft.areaKm} × ${draft.areaKm} KM` },
                     ]
                   : []
               }
