@@ -99,14 +99,14 @@ export function imageryUsd(tier: PricingTier, rates: ImageryRates, areaKm: numbe
     return {
       usd: scene.perKm2 * billed,
       billedKm2: billed,
-      note: `${scene.provider} ${scene.resolution} archive scene · $${scene.perKm2}/km² × ${trim(billed)} km²`.replace('  ', ' '),
+      note: `existing ${resLabel(scene.resolution)} scene · ${trim(billed)} km² billed`,
     };
   }
   const billed = Math.max(footprint, rates.taskingMinKm2);
   return {
     usd: rates.taskingPerKm2 * billed,
     billedKm2: billed,
-    note: `fresh ${rates.taskingResolution} tasking · $${rates.taskingPerKm2}/km² × ${trim(billed)} km² (SkyFi minimum ${rates.taskingMinKm2} km²)`,
+    note: `new ${resLabel(rates.taskingResolution)} tasking · ${trim(billed)} km² billed (${rates.taskingMinKm2} km² minimum)`,
   };
 }
 
@@ -199,4 +199,35 @@ export function hasLivePriceTable(currency: Currency): boolean {
 }
 
 function round2(n: number) { return Math.round(n * 100) / 100; }
+
+/** Customer-facing resolution wording; supplier tier names never reach the site. */
+function resLabel(resolution: string): string {
+  switch (resolution) {
+    case 'SUPER HIGH': return '≈0.3 m';
+    case 'VERY HIGH': return '≈0.5 m';
+    case 'HIGH': return '≈1 m';
+    default: return 'high-resolution';
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Print price — the print's own share, shown on the Design step       */
+/* ------------------------------------------------------------------ */
+export type PrintTable = Record<FormatId, Record<FrameOption, number>>;
+
+/** The print at cost + margin, minor units — the measured fallback. */
+export function fallbackPrintPriceMinor(formatId: FormatId, frame: FrameOption, currency: Currency): number {
+  return Math.round(PRINT_FALLBACK[formatId][frame][currency] * (1 + MARGIN) * 100);
+}
+
+let livePrint: { currency: Currency; table: PrintTable } | null = null;
+
+export function setLivePrintTable(currency: Currency, table: PrintTable | null) {
+  livePrint = table ? { currency, table } : null;
+}
+
+export function printPriceMinorLiveOrFallback(formatId: FormatId, frame: FrameOption, currency: Currency): number {
+  const live = livePrint?.currency === currency ? livePrint.table[formatId]?.[frame] : undefined;
+  return typeof live === 'number' && live > 0 ? live : fallbackPrintPriceMinor(formatId, frame, currency);
+}
 function trim(n: number) { return Number.isInteger(n) ? String(n) : n.toFixed(2); }

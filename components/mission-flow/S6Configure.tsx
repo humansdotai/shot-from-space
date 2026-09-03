@@ -11,7 +11,7 @@ import {
   POSTER_STYLE_IDS,
   type PosterStyleId,
 } from '@/lib/poster/styles';
-import { DEFAULT_TIER, TIER_COPY, tierPriceMinor } from '@/lib/mission-flow/config';
+import { printPriceMinor } from '@/lib/mission-flow/config';
 import { revealFrameUrl } from '@/lib/mission-flow/api';
 import type { MissionDraft } from '@/lib/mission-flow/state';
 import { PanelGroup, PanelHead, PanelNote, PreviewDisclosure } from './Panel';
@@ -76,8 +76,8 @@ export function DesignSection({
    */
   currency: Currency;
 }) {
-  const price = (id: FormatId) =>
-    formatPrice(tierPriceMinor(DEFAULT_TIER, id, frame, currency), currency);
+  /* The PRINT's own price at the chosen finish — the mission total is in the panel foot. */
+  const price = (id: FormatId) => formatPrice(printPriceMinor(id, frame, currency), currency);
 
   const sizeOptions: readonly CardOption<FormatId>[] = FORMATS.map((f) => ({
     value: f.id,
@@ -136,7 +136,7 @@ export function DesignSection({
         </PanelGroup>
       ) : null}
 
-      <PanelGroup label="Size">
+      <PanelGroup label="Size" hint="Print price">
         <CardGroup label="Print size" options={sizeOptions} value={formatId} onSelect={onFormat} />
       </PanelGroup>
 
@@ -152,14 +152,6 @@ export function DesignSection({
           ]}
         />
       </PanelGroup>
-
-      <div className={cn('flex items-baseline justify-between gap-6 border-t pt-5', RULE)}>
-        <span className={cn('text-label uppercase', INK_DIM)}>{TIER_COPY[DEFAULT_TIER].name}</span>
-        <span className={cn('text-heading tabular-nums', INK)} data-telemetry>
-          {formatPrice(tierPriceMinor(DEFAULT_TIER, formatId, frame, currency), currency)}{' '}
-          {currency}
-        </span>
-      </div>
 
 
       <PreviewDisclosure />

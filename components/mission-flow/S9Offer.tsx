@@ -387,7 +387,7 @@ export function ReviewSection({
           Secure checkout
         </span>
         <p className={cn('min-w-0 flex-1 text-note', INK_DIM)}>
-          Payment is taken on Stripe&apos;s secure hosted page. Card details are entered there,
+          Payment is taken on a secure hosted checkout page. Card details are entered there,
           never here.
         </p>
       </div>

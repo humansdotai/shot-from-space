@@ -322,6 +322,10 @@ export async function createMission(input: CreateMissionInput): Promise<MissionD
       dedication: sanitizeDedication(input.dedication),
       missionName: cleanName(input.missionName),
       posterStyle: input.posterStyle?.trim().slice(0, 40) || null,
+      // Operator-only: the cost basis of the charge. Read on /admin, never shown to the buyer.
+      quoteNote:
+        `${tier} · imagery ${quote.imagery.toFixed(2)} + print ${quote.print.toFixed(2)} ` +
+        `+ margin ${quote.margin.toFixed(2)} = ${quote.total.toFixed(2)} ${currency} (${quote.imageryNote})`,
 
       // Deterministic telemetry so the file reads the same on every visit.
       sensor: telemetry.sensor,
@@ -342,10 +346,8 @@ export async function createMission(input: CreateMissionInput): Promise<MissionD
             label: 'ORDER RECEIVED',
             detail:
               `Target accepted: ${locationLabelFor(address)}. ` +
-              `${tier} · ${format.metric} ${input.frame === 'FRAMED' ? 'framed' : 'unframed'}. ` +
-              `Quote: imagery ${quote.imagery.toFixed(2)} + print ${quote.print.toFixed(2)} ` +
-              `+ margin ${quote.margin.toFixed(2)} = ${quote.total.toFixed(2)} ${currency} ` +
-              `(${quote.imageryNote}). Awaiting payment authorisation.`,
+              `${TIER_LABEL[tier]} · ${format.metric} ${input.frame === 'FRAMED' ? 'framed' : 'unframed'}. ` +
+              `Awaiting payment authorisation.`,
           },
         ],
       },
@@ -466,6 +468,12 @@ export async function attachCheckoutSession(
  * This is the demo control behind POST /api/dev/advance, and it is also what a
  * real webhook handler calls when a provider reports progress.
  */
+const TIER_LABEL: Record<TierId, string> = {
+  ARCHIVE: 'Archive frame',
+  COMMISSION: 'Commission',
+  COMMISSION_LARGE_FORMAT: 'Commission, large format',
+};
+
 function cleanName(v: string | null | undefined): string | null {
   const t = (v ?? '').replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, 40);
   return t.length >= 3 ? t : null;

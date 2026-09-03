@@ -29,7 +29,7 @@ const SECTIONS = [
   {
     heading: 'What we collect',
     body: [
-      'The address you ask us to photograph, because it is the product. Your email address, because it is how a mission reaches you and how your account exists. Your delivery address, if it differs from the target. Payment is processed by Stripe; we never see or store card details.',
+      'The address you ask us to photograph, because it is the product. Your email address, because it is how a mission reaches you and how your account exists. Your delivery address, if it differs from the target. Payment is processed by our payment processor; we never see or store card details.',
       'We also store the mission itself: its capture telemetry, its timeline, the frames acquired for it, and any Mission Comms correspondence.',
     ],
   },
@@ -48,7 +48,7 @@ const SECTIONS = [
   {
     heading: 'Who else handles your data',
     body: [
-      'SkyFi receives the target coordinates in order to task a capture. Gelato receives your delivery address and the print file in order to produce and ship the object. Stripe processes payment. Our email provider delivers transactional messages. Each receives only what its job requires, and none of them receive your data for their own purposes.',
+      'Our imagery partner receives the target coordinates in order to task a capture. Our print partner receives your delivery address and the print file in order to produce and ship the object. our payment processor processes payment. Our email provider delivers transactional messages. Each receives only what its job requires, and none of them receive your data for their own purposes.',
     ],
   },
   {

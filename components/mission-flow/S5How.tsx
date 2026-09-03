@@ -118,7 +118,7 @@ export function FramingSection({
             <p className="pt-1">
               {quote.tier === 'ARCHIVE'
                 ? `${quote.imageryNote}. A smaller frame costs less.`
-                : `SkyFi bills a 25 km² minimum per tasking, so every frame up to ${AREA_KM_MAX} × ${AREA_KM_MAX} km costs the same.`}
+                : `A new tasking is billed at a 25 km² minimum, so every frame up to ${AREA_KM_MAX} × ${AREA_KM_MAX} km costs the same.`}
             </p>
             <div className="flex justify-between gap-4 pt-2">
               <dt>Print</dt>

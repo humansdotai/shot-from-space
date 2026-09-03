@@ -103,7 +103,7 @@ export function ProviderBar({ className }: { className?: string }) {
       )}
     >
       <h2 id="provider-bar-label" className="measure-tight text-label uppercase ink-dim lg:max-w-none">
-        Missions are tasked through SkyFi, which brokers commercial constellation operators
+        Tasked across commercial imaging constellations
       </h2>
 
       {/* Two up at 390, three on a tablet, and one full-measure row from
@@ -128,10 +128,10 @@ export function ProviderBar({ className }: { className?: string }) {
       </ul>
 
       <p className="measure-wide text-body ink-faint">
-        Set in type, not in marks. SkyFi is our supplier; the operators above are listed by
-        SkyFi as sources on its platform. None of them is a partner of Shot from Space, and
-        none of them endorses it. Every frame shown on this site is public-domain NASA / USGS
-        Landsat imagery, not an operator capture — see the imagery credits.
+        Set in type, not in marks. The operators above are constellations reachable through
+        our tasking network; none of them is a partner of Shot from Space and none endorses
+        it. Frames shown on this site are reference imagery for positioning, not operator
+        captures — see the imagery credits.
       </p>
     </section>
   );

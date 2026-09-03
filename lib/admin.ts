@@ -119,7 +119,10 @@ export async function listMissionsForAdmin(limit = 300): Promise<AdminMission[]>
   return rows.map((r) => {
     const state = r.state as MissionState;
     const received = r.events.find((e) => e.label === 'ORDER RECEIVED');
-    const tier = received?.detail?.match(/\b(ARCHIVE|COMMISSION_LARGE_FORMAT|COMMISSION)\b/)?.[1] ?? 'COMMISSION';
+    const tier =
+      r.quoteNote?.match(/^(ARCHIVE|COMMISSION_LARGE_FORMAT|COMMISSION)\b/)?.[1] ??
+      received?.detail?.match(/\b(ARCHIVE|COMMISSION_LARGE_FORMAT|COMMISSION)\b/)?.[1] ??
+      (received?.detail?.includes('Archive frame') ? 'ARCHIVE' : received?.detail?.includes('large format') ? 'COMMISSION_LARGE_FORMAT' : 'COMMISSION');
     const last = r.events[r.events.length - 1] ?? null;
     const status: AdminStatus =
       state === 'CANCELLED'
@@ -167,7 +170,7 @@ export async function listMissionsForAdmin(limit = 300): Promise<AdminMission[]>
       captureUrl: `/api/admin/missions/${r.code}/capture`,
       lastEvent: last ? { label: last.label, detail: last.detail, at: last.at.toISOString() } : null,
       events,
-      quoteNote: received?.detail?.match(/Quote: (.*?)\. Awaiting/)?.[1] ?? null,
+      quoteNote: r.quoteNote ?? received?.detail?.match(/Quote: (.*?)\. Awaiting/)?.[1] ?? null,
     };
   });
 }

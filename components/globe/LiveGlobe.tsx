@@ -38,7 +38,7 @@ import { RecordPanel, ageLabel } from './RecordPanel';
  * WHAT IS REAL HERE
  * ========================================================================
  * · POSITIONS. Every marker is `subPointAt()` from `lib/satellites/propagate`
- *   run against the CelesTrak element set the server fetched — the same call,
+ *   run against the Orbital elements element set the server fetched — the same call,
  *   the same instant and the same numbers the card prints and the same ones
  *   `components/satellites/FleetTracker.tsx` shows elsewhere on the site.
  *
@@ -622,7 +622,7 @@ export function LiveGlobe({
 
     `fetchFleetElements()` degrades to the bundled snapshot, so this is rare;
     it is not impossible. If the snapshot is ever emptied, filtered to nothing
-    by a FLEET_IDS change, or the fleet is re-keyed against a CelesTrak group
+    by a FLEET_IDS change, or the fleet is re-keyed against a Orbital elements group
     that no longer carries these objects, `tracked` is empty — and measured,
     with the fetch forced to that state, this band drew an unpopulated globe
     under the headline "Eight spacecraft, where they actually are", an empty
@@ -802,7 +802,7 @@ export function LiveGlobe({
           rel="noreferrer noopener"
           className="link-underline ink-dim hover:ink"
         >
-          CelesTrak
+          Orbital elements
         </a>
         {hasElements ? (
           <>

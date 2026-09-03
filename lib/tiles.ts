@@ -222,8 +222,8 @@ function mapbox(token: string): TileProvider {
  */
 const esri: TileProvider = {
   id: 'esri-world-imagery',
-  label: 'ESRI WORLD IMAGERY',
-  name: 'Esri World Imagery',
+  label: 'REFERENCE IMAGERY',
+  name: 'Reference imagery',
   attribution: 'Esri, Maxar, Earthstar Geographics, and the GIS User Community',
   attributionHref: 'https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9',
   minZoom: 1,

@@ -40,7 +40,7 @@ import { useLiveClock } from './useLiveClock';
  * ONE REQUEST, EIGHT MOVING CARDS
  * ------------------------------------------------------------------------
  * The elements arrive once, from the server, cached three hours by the
- * CelesTrak adapter and shared by every card on the page. Nothing here
+ * Orbital elements adapter and shared by every card on the page. Nothing here
  * fetches. What moves is the propagation: SGP4 runs locally, once a second,
  * against the same fixed element set, so the readouts are live without the
  * network being touched again.
@@ -61,7 +61,7 @@ export function FleetCards({
   className,
 }: {
   elements: GpElement[];
-  /** `live` came from CelesTrak this revalidation window; `snapshot` did not. */
+  /** `live` came from Orbital elements this revalidation window; `snapshot` did not. */
   source: 'live' | 'snapshot';
   /** The server's instant, ISO. Seeds the clock so hydration matches. */
   serverNow: string;
@@ -312,7 +312,7 @@ function SourceLine({
 
   /*
     `reduce(..., 0)` has a seed, and with an empty fleet the seed is what gets
-    printed: measured, with the CelesTrak adapter forced to return no
+    printed: measured, with the Orbital elements adapter forced to return no
     elements, this line read "The oldest element set shown was fitted 0 min
     ago" — a freshness claim about a set that was not there — above a grid
     with no cards in it. WAVE.md §2. State the outage instead.
@@ -327,7 +327,7 @@ function SourceLine({
           rel="noreferrer noopener"
           className="link-underline ink-dim transition-house hover:ink"
         >
-          CelesTrak
+          Orbital elements
         </a>
         , and none reached this page — the live request did not complete and no bundled set was
         available. Nothing is shown rather than estimated: every figure on these cards is an SGP4
@@ -345,7 +345,7 @@ function SourceLine({
         rel="noreferrer noopener"
         className="link-underline ink-dim transition-house hover:ink"
       >
-        CelesTrak
+        Orbital elements
       </a>
       {source === 'live'
         ? ', fetched directly and refreshed every three hours.'

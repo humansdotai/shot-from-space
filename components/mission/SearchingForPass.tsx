@@ -39,7 +39,7 @@ import { ACCENT, Chip, INK_DIM, INK_FAINT, RULE } from './ui';
  * short, two layers:
  *
  *   THE TRACKED FLEET   real spacecraft at `subPointAt()` positions solved
- *                       from CelesTrak's published elements — the same call
+ *                       from Orbital elements's published elements — the same call
  *                       and the same numbers <LiveGlobe /> prints. The
  *                       markers move because the satellites move; the figure
  *                       runs the elements forward at a rate it states
@@ -71,7 +71,7 @@ import { ACCENT, Chip, INK_DIM, INK_FAINT, RULE } from './ui';
  *   next pass        `nextPassAt(mission, now)` — the same function the
  *                    stage readout uses
  *   window           `windowOpensAt` / `windowClosesAt`, verbatim
- *   fleet            CelesTrak elements via `/mission/fleet`, propagated in
+ *   fleet            Orbital elements elements via `/mission/fleet`, propagated in
  *                    the browser, with the element source and age printed
  *
  * THERE IS NO COUNTDOWN. A pass time is printed as the timestamp the record
@@ -339,7 +339,7 @@ export function SearchingForPass({ mission, now, className }: SearchingForPassPr
             {readout ? (
               <p className={cn('mt-6 max-w-[var(--measure)] border-t pt-5 text-note', RULE, INK_DIM)}>
                 {readout.tracked} tracked spacecraft, at positions solved from{' '}
-                {readout.source === 'live' ? 'published CelesTrak' : 'the bundled snapshot of'}{' '}
+                {readout.source === 'live' ? 'published' : 'the bundled snapshot of'}{' '}
                 orbital elements {readout.freshestAgeHours.toFixed(1)} hours old,{' '}
                 {ORBIT_CLOCK_SENTENCE}. None is assigned to this mission: tasking is brokered at
                 capture time, and the plane drawn through the target is this record&rsquo;s own

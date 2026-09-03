@@ -19,6 +19,7 @@ import {
   DEFAULT_AREA_KM,
   FALLBACK_RATES,
   FALLBACK_USD_EUR,
+  MARGIN,
   PRINT_FALLBACK,
   bestArchiveScene,
   imageryUsd,
@@ -27,11 +28,12 @@ import {
   type ImageryRates,
   type PriceTable,
   type PricingTier,
+  type PrintTable,
   type QuoteBreakdown,
 } from '@/lib/pricing-model';
 import type { Currency, FormatId, FrameOption } from '@/lib/types';
 
-export { MARGIN } from '@/lib/pricing-model';
+export { MARGIN };
 
 const TTL_MS = 60 * 60 * 1000;
 
@@ -210,6 +212,24 @@ export async function liveQuote(
 const TIERS: PricingTier[] = ['ARCHIVE', 'COMMISSION', 'COMMISSION_LARGE_FORMAT'];
 const FORMAT_IDS: FormatId[] = ['F30', 'F50', 'F70'];
 const FRAMES: FrameOption[] = ['UNFRAMED', 'FRAMED'];
+
+/** The print's own price (real print cost + margin) per size × finish, minor units. */
+export async function livePrintTable(currency: Currency): Promise<PrintTable> {
+  const table = {} as PrintTable;
+  await Promise.all(
+    FORMAT_IDS.map(async (f) => {
+      table[f] = {} as Record<FrameOption, number>;
+      await Promise.all(
+        FRAMES.map(async (fr) => {
+          const g = await gelatoPrice(f, fr, currency);
+          const cost = g.printCost ?? PRINT_FALLBACK[f][fr][currency];
+          table[f][fr] = Math.round(cost * (1 + MARGIN) * 100);
+        }),
+      );
+    }),
+  );
+  return table;
+}
 
 /** Every tier × size × finish at live rates, for the browser's price table. */
 export async function livePriceTable(currency: Currency, opts: QuoteTarget = {}): Promise<PriceTable> {

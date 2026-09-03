@@ -284,7 +284,7 @@ function renderImageAcquired(d: MissionEmailData): RenderedEmail {
     ['TARGET', d.locationLabel],
     ['COORDINATES', formatCoords(d.lat, d.lon)],
     ['CAPTURED', ts(d.capturedAt)],
-    ['SENSOR', d.sensor ?? 'SKYFI-HR / OPTICAL'],
+    ['SENSOR', (d.sensor ?? 'HR / OPTICAL').replace(/^SKYFI-/, '')],
     ['RESOLUTION', d.gsdM !== undefined ? `${d.gsdM} M GSD` : '0.5 M GSD'],
     ['CLOUD', d.cloudPct !== undefined ? `${d.cloudPct}%` : '—'],
     ['FILE', link],

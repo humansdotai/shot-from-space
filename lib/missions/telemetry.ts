@@ -35,9 +35,9 @@ export function seededPick<T>(seed: string, items: readonly T[]): T {
  * constellation names appear anywhere in the product.
  */
 const SENSORS = [
-  'SKYFI-HR / OPTICAL',
-  'SKYFI-VHR / OPTICAL',
-  'SKYFI-HR2 / PAN+MS',
+  'HR / OPTICAL',
+  'VHR / OPTICAL',
+  'HR2 / PAN+MS',
 ] as const;
 
 /** Sun-synchronous inclinations cluster tightly around 97–98.7°. */
@@ -59,7 +59,7 @@ export function missionTelemetry(code: string): OrbitData {
     track: `//ELIPSE ${seededInt(`track:${c}`, 18, 62)}°`,
     altitudeKm: seededInt(`alt:${c}`, 450, 620),
     // VHR sensors resolve 0.3–0.7 m; the PAN+MS bird is a touch coarser.
-    gsdM: sensor === 'SKYFI-VHR / OPTICAL'
+    gsdM: sensor === 'VHR / OPTICAL'
       ? seededFloat(`gsd:${c}`, 0.3, 0.4, 2)
       : seededFloat(`gsd:${c}`, 0.45, 0.75, 2),
     azimuthDeg: seededInt(`az:${c}`, 82, 148),

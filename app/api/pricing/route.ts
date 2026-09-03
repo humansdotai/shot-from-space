@@ -18,7 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FORMATS, currencyForRegion, priceMinor, regionForCountry } from '@/lib/pricing';
 import { gelatoPrice } from '@/lib/integrations/gelato-pricing';
-import { MARGIN, livePriceTable, liveQuote, skyfiRates, usdToEur } from '@/lib/pricing-live';
+import { MARGIN, livePriceTable, livePrintTable, liveQuote, skyfiRates, usdToEur } from '@/lib/pricing-live';
 import type { PricingTier } from '@/lib/pricing-model';
 import type { Currency, FormatId, FrameOption } from '@/lib/types';
 
@@ -59,10 +59,11 @@ export async function GET(req: NextRequest) {
   const formatId: FormatId = formatRaw === 'F30' || formatRaw === 'F70' ? formatRaw : 'F50';
   const frame: FrameOption = q.get('frame') === 'FRAMED' ? 'FRAMED' : 'UNFRAMED';
 
-  const [rates, fx, table, quote, formats] = await Promise.all([
+  const [rates, fx, table, printTable, quote, formats] = await Promise.all([
     skyfiRates(lat, lon, areaKm),
     usdToEur(),
     livePriceTable(currency, target),
+    livePrintTable(currency),
     liveQuote(tier, formatId, frame, currency, target),
     Promise.all(
       FORMATS.map(async (f) => {
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
   ]);
 
   return NextResponse.json(
-    { currency, detectedCountry, geoCurrency, margin: MARGIN, fx: { usdToEur: fx }, rates, table, quote, formats },
+    { currency, detectedCountry, geoCurrency, margin: MARGIN, fx: { usdToEur: fx }, rates, table, printTable, quote, formats },
     { headers: { 'Cache-Control': 'private, max-age=60' } },
   );
 }

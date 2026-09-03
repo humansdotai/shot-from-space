@@ -58,7 +58,7 @@ export function resolveStage(row: MissionRow): MissionStage {
 
 export function orbitFromRow(row: MissionRow): OrbitData {
   return {
-    sensor: row.sensor,
+    sensor: row.sensor.replace(/^SKYFI-/, ''),
     inclination: row.inclination,
     track: row.track,
     altitudeKm: row.altitudeKm,

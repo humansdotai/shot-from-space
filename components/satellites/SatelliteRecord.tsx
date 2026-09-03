@@ -38,7 +38,7 @@ import {
  * the surface where a reader would otherwise assume the link.
  *
  * Every position readout is accompanied by the age of the element set it was
- * computed from, and by whether that set came from CelesTrak this session or
+ * computed from, and by whether that set came from Orbital elements this session or
  * from the copy bundled with the build. A page that quietly draws month-old
  * elements as though they were live is the failure this panel exists to
  * refuse.
@@ -232,7 +232,7 @@ export function SatelliteRecord({
                 label="Element source"
                 value={
                   source === 'live'
-                    ? 'CelesTrak, fetched for this page'
+                    ? 'Published elements, fetched for this page'
                     : 'Bundled with this build — the live request did not complete'
                 }
               />
@@ -246,7 +246,7 @@ export function SatelliteRecord({
                 of a propagation grows with the age of the elements it runs from — which is
                 why that age is printed above rather than hidden.{' '}
                 {source === 'live'
-                  ? 'This set came from CelesTrak during this page load.'
+                  ? 'This set was fetched during this page load.'
                   : 'This set is the copy bundled with the build, because the live request did not complete.'}
               </p>
               <p className="mt-4 max-w-[68ch] text-note ink-faint">
@@ -263,7 +263,7 @@ export function SatelliteRecord({
                   rel="noreferrer noopener"
                   className="link-underline ink-dim transition-house hover:ink"
                 >
-                  CelesTrak
+                  Orbital elements
                 </a>
                 , data by Dr T.S. Kelso.
               </p>

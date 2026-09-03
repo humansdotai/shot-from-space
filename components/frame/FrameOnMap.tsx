@@ -987,7 +987,7 @@ export function FrameOnMap({ lat, lon, areaKm, onChange, className }: FrameOnMap
         {atHome
           ? ''
           : `The frame is holding ${km2(shownKm)} km of context; the dashed square inside it is the ${km2(areaKm)} km the mission photographs. `}
-        Reference imagery for positioning: {desc.name}, {desc.nativeMetres} m ground
+        Reference imagery for positioning, {desc.nativeMetres} m ground
         sample, drawn at {scaleLine.toLowerCase()}
         {magnification > 1.2 ? ` (magnified ×${magnification.toFixed(1)})` : ''}. Your
         mission captures a new frame of this ground at the tier you order.

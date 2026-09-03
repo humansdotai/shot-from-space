@@ -144,8 +144,7 @@ export function RevealStage({ target }: { target: MissionTarget }) {
      taken. `UNDATED` is a value, not a blank — see the note above. */
   const telemetry = [
     telemetryCoords(target.lat, target.lon),
-    'ESRI WORLD IMAGERY',
-    'REFERENCE',
+    'REFERENCE IMAGERY',
   ]
     .filter(Boolean)
     .join('  ·  ');

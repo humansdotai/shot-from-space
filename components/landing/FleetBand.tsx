@@ -99,13 +99,13 @@ import { MEASURE } from './geometry';
  * repeated, however different their contents — and these two are genuinely
  * different questions: the globe answers WHERE they are, these cards answer
  * WHAT they are. Keeping them adjacent is right, because the pair is a
- * progression and they share a single CelesTrak fetch; echoing the count in
+ * progression and they share a single Orbital elements fetch; echoing the count in
  * both headlines was not.
  *
  * ------------------------------------------------------------------
  * ONE REQUEST
  * ------------------------------------------------------------------
- * `fetchFleetElements()` is the shared adapter: one CelesTrak document
+ * `fetchFleetElements()` is the shared adapter: one Orbital elements document
  * covering the whole fleet, cached three hours by `next.revalidate`, and
  * falling back to the bundled snapshot — saying so on screen — when the
  * live request does not complete. Because the cache key is the request
@@ -141,7 +141,7 @@ export async function FleetBand() {
           }
           lede={
             drawn > 0
-              ? `A card each, drawn from live CelesTrak elements propagated in your browser.
+              ? `A card each, drawn from live orbital elements propagated in your browser.
                  These are not the satellites assigned to your mission — tasking is brokered at
                  capture time and the spacecraft is very often none of these. They are what is
                  up there, and where.`

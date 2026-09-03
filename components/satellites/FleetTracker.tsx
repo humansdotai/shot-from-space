@@ -20,7 +20,7 @@ import { useLiveClock } from './useLiveClock';
  * FLEET TRACKER — where the imaging satellites are, right now.
  *
  * Eight real spacecraft, propagated in the browser once a second from the
- * element sets the server fetched from CelesTrak. The elements are requested
+ * element sets the server fetched from Orbital elements. The elements are requested
  * at most once every three hours; the POSITIONS move every second, because
  * SGP4 runs locally against a fixed element set. The readout is live without
  * the network being touched again.
@@ -82,7 +82,7 @@ export function FleetTracker({
         return member && rec ? { element, member, rec } : null;
       })
       .filter((v): v is { element: GpElement; member: FleetMember; rec: NonNullable<ReturnType<typeof toSatrec>> } => v !== null)
-      // Keep the author's order in fleet.ts, not CelesTrak's catalogue order.
+      // Keep the author's order in fleet.ts, not Orbital elements's catalogue order.
       .sort((a, b) => FLEET.indexOf(a.member) - FLEET.indexOf(b.member));
   }, [elements]);
 
@@ -267,7 +267,7 @@ function SourceLine({
         rel="noreferrer noopener"
         className="link-underline text-paper-dim hover:text-paper"
       >
-        CelesTrak
+        Orbital elements
       </a>
       {source === 'live'
         ? ', fetched directly and refreshed every three hours.'

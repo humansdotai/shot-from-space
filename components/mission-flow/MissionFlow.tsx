@@ -30,7 +30,7 @@ import {
 } from '@/lib/mission-flow/config';
 import { resolveAddress, toTargetAddress } from '@/lib/mission-flow/api';
 import type { Currency } from '@/lib/types';
-import { setLivePriceTable, type PriceTable, type QuoteView } from '@/lib/pricing-model';
+import { setLivePriceTable, setLivePrintTable, type PriceTable, type PrintTable, type QuoteView } from '@/lib/pricing-model';
 import { Configurator } from './Configurator';
 import { ClosedRail, SectionRail } from './SectionRail';
 import { PanelFoot, type PrimaryAction } from './PanelFoot';
@@ -179,9 +179,10 @@ export function MissionFlow() {
     const t = window.setTimeout(() => {
       fetch(`/api/pricing?${q.toString()}`)
         .then((r) => r.json())
-        .then((d: { currency?: Currency; table?: PriceTable; quote?: QuoteView }) => {
+        .then((d: { currency?: Currency; table?: PriceTable; printTable?: PrintTable; quote?: QuoteView }) => {
           if (cancelled || !d.table || (d.currency !== 'USD' && d.currency !== 'EUR')) return;
           setLivePriceTable(d.currency, d.table);
+          setLivePrintTable(d.currency, d.printTable ?? null);
           setLiveQuoteView(d.quote ?? null);
           setPriceRev((n) => n + 1);
         })

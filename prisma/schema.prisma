@@ -100,6 +100,8 @@ model Mission {
   captureAssetUrl String?
   /// Operator-supplied replacement print file (absolute URL). Overrides the composed print.
   printFileUrl    String?
+  /// Cost breakdown behind amountMinor (operator-only; never on the customer's timeline).
+  quoteNote       String?
 
   // --- Dedication -----------------------------------------------
   /// "What is this place?", in the customer's own words. Printed on the
@@ -125,7 +127,7 @@ model Mission {
   deliverableUrl String?
 
   // --- Orbit / pass telemetry ----------------------------------
-  sensor       String @default("SKYFI-HR / OPTICAL")
+  sensor       String @default("HR / OPTICAL")
   inclination  String @default("SSO 97.4°")
   track        String @default("//ELIPSE 33°")
   altitudeKm   Int    @default(512)

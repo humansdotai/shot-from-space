@@ -20,7 +20,7 @@
  */
 
 import type { Currency, FormatId, FrameOption } from '@/lib/types';
-import { fallbackTierPriceMinor, tierPriceMinorLiveOrFallback } from '@/lib/pricing-model';
+import { fallbackTierPriceMinor, printPriceMinorLiveOrFallback, tierPriceMinorLiveOrFallback } from '@/lib/pricing-model';
 import { currencyForRegion, regionForCountry } from '@/lib/pricing';
 
 /* ==================================================================
@@ -214,6 +214,11 @@ export function tierPriceMinor(
   /* cost + 10 %: the live table when the browser has fetched one for this
      currency (see MissionFlow → /api/pricing), else the measured fallback. */
   return tierPriceMinorLiveOrFallback(tier, formatId, frame, currency);
+}
+
+/** The print's own price for a size and finish (real print cost + margin), minor units. */
+export function printPriceMinor(formatId: FormatId, frame: FrameOption, currency: Currency): number {
+  return printPriceMinorLiveOrFallback(formatId, frame, currency);
 }
 
 /** The finish actually used for a tier — the forced one, or the chosen one. */

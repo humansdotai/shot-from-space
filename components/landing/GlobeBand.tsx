@@ -14,7 +14,7 @@ import { MEASURE } from './geometry';
  * them. Everything above this point argues it in words and photographs. This
  * argues it with a live instrument: eight real objects, in their real places,
  * at their real altitudes, propagated in the reader's own browser from
- * elements CelesTrak published a few hours ago. It is the one section on the
+ * elements Orbital elements published a few hours ago. It is the one section on the
  * site that cannot be faked by a designer, and that is the point of it.
  *
  * It is also what WAVE.md §1 says to build instead of the reference site's
@@ -35,7 +35,7 @@ import { MEASURE } from './geometry';
  * ------------------------------------------------------------------
  * DATA
  * ------------------------------------------------------------------
- * ONE CelesTrak request for the whole fleet, held three hours by the Next
+ * ONE Orbital elements request for the whole fleet, held three hours by the Next
  * data cache and shared by every visitor (`lib/integrations/celestrak.ts`).
  * A failed or slow request falls back to the bundled snapshot, and the
  * readout says which one it drew and how old the elements are either way.
@@ -51,7 +51,7 @@ import { MEASURE } from './geometry';
 /**
  * The headline counts what is actually on the globe. It used to say "Eight"
  * as a literal, and eight is what the fleet holds — but the number drawn is
- * whatever CelesTrak returned for `FLEET_IDS`, and a partial answer is
+ * whatever Orbital elements returned for `FLEET_IDS`, and a partial answer is
  * explicitly allowed through by `fetchFleetElements()` ("one decommissioned
  * object should not drop the page to a snapshot"). Measured with the fetch
  * forced empty, the band headlined "Eight spacecraft, where they actually
@@ -89,7 +89,7 @@ export async function GlobeBand() {
           }
           lede={
             drawn > 0
-              ? 'Live orbital elements from CelesTrak, propagated in your browser. Hover one to draw a full revolution of its track at its true altitude. These are not the satellites assigned to your mission — tasking is brokered at capture time and the spacecraft is very often none of these. They are simply what is up there, and where.'
+              ? 'Live orbital elements, propagated in your browser. Hover one to draw a full revolution of its track at its true altitude. These are not the satellites assigned to your mission — tasking is brokered at capture time and the spacecraft is very often none of these. They are simply what is up there, and where.'
               : 'This band draws real spacecraft from real published orbital elements and nothing else. The element sets did not reach the page, so there is nothing to place on the globe and no position is estimated in their absence.'
           }
         />
