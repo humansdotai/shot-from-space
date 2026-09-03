@@ -145,12 +145,19 @@ function redactDetail(detail: string | null): string | null {
     .trim();
 }
 
+function scrubVendors(text: string | null): string | null {
+  if (!text) return text;
+  return text.replace(/\bSKYFI-/g, '').replace(/\bSkyFi\b/g, 'the tasking partner').replace(/\bGelato\b/g, 'the print partner');
+}
+
 function toEventDTO(e: MissionEvent, redact: boolean): MissionEventDTO {
   return {
     id: e.id,
     stage: (asStage(e.stage) ?? 'NOTE') as MissionStage | 'NOTE',
     label: e.label,
-    detail: redact ? redactDetail(e.detail) : e.detail,
+    // Supplier names never reach a customer surface, including legacy rows
+    // whose stored detail still carries the old sensor prefix.
+    detail: scrubVendors(redact ? redactDetail(e.detail) : e.detail),
     at: e.at.toISOString(),
   };
 }
