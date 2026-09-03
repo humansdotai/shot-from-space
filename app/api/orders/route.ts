@@ -43,6 +43,8 @@ const Body = z.object({
      free string, and the AMOUNT is deliberately not part of this schema:
      createMission recomputes it. See CreateMissionInput.tier. */
   tier: z.enum(TIER_IDS).optional(),
+  /** Buyer-selected billing currency. Absent → derived from the address. */
+  currency: z.enum(['USD', 'EUR']).optional(),
   email: z.string().email('A valid email address is required.').max(200),
   /** Capture footprint in km per side. */
   areaKm: z.number().min(0.4).max(5).optional(),
@@ -71,6 +73,12 @@ export async function POST(req: Request) {
 
   const { address, tier, formatId, frame, email, areaKm, dedication } = parsed.data;
 
+  // The buyer's currency choice wins; otherwise the address decides. The order
+  // and the Stripe session are priced in the SAME currency so the button and
+  // the receipt can never disagree.
+  const region = regionForCountry(address.countryCode);
+  const currency: Currency = parsed.data.currency ?? currencyForRegion(region);
+
   try {
     const mission = await createMission({
       email,
@@ -78,12 +86,11 @@ export async function POST(req: Request) {
       tier,
       formatId,
       frame,
+      currency,
       areaKm,
       dedication,
     });
 
-    const region = regionForCountry(address.countryCode);
-    const currency: Currency = currencyForRegion(region);
     const format = getFormat(formatId);
 
     const session = await createCheckoutSession({

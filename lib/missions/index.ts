@@ -204,6 +204,8 @@ export interface CreateMissionInput {
   tier?: TierId | null;
   formatId: FormatId;
   frame: FrameOption;
+  /** Buyer-selected billing currency. Absent → derived from the address. */
+  currency?: Currency;
   /** Capture footprint in km per side. Defaults to 1.2 km — a house lot with
    *  enough surrounding street grid to read as a place. */
   areaKm?: number;
@@ -253,8 +255,14 @@ export async function createMission(input: CreateMissionInput): Promise<MissionD
     throw new MissionValidationError('The target address is missing coordinates.');
   }
 
+  // Print REGION follows the shipping address (US → Reno, EU → Eindhoven);
+  // CURRENCY is the buyer's choice when they made one, otherwise the region's
+  // default. The two are independent: a EUR buyer can still ship to the US.
   const region = regionForCountry(address.countryCode);
-  const currency: Currency = currencyForRegion(region);
+  const currency: Currency =
+    input.currency === 'USD' || input.currency === 'EUR'
+      ? input.currency
+      : currencyForRegion(region);
   const format = getFormat(input.formatId);
   const amountMinor = input.tier
     ? tierPriceMinor(input.tier, input.formatId, input.frame, currency)

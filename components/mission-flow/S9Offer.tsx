@@ -151,6 +151,7 @@ export function ReviewSection({
   onGiftNote,
   onEmail,
   currency,
+  onCurrencyChange,
   phase,
   error,
   emailError,
@@ -177,6 +178,8 @@ export function ReviewSection({
    * being shown "€189 EUR" and billed $260.
    */
   currency: Currency;
+  /** Switch the billing currency (USD/EUR). */
+  onCurrencyChange?: (c: Currency) => void;
   phase: CommissionPhase;
   error: string | null;
   emailError: string | null;
@@ -339,6 +342,28 @@ export function ReviewSection({
           is pinned in the foot where it is visible from anywhere in this
           section. Nothing about the flow can reach a charge without passing
           it. */}
+      {/* Billing currency — defaults to the visitor's region (geolocated), but
+          the buyer picks. The whole flow re-prices from this instantly. */}
+      {onCurrencyChange ? (
+        <div className="flex items-center justify-between gap-3">
+          <span className={cn('text-label uppercase', INK_DIM)}>Billing currency</span>
+          <div className={cn('inline-flex overflow-hidden border', RULE, CURVE)}>
+            {(['USD', 'EUR'] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onCurrencyChange(c)}
+                aria-pressed={currency === c}
+                className={cn('px-4 py-1.5 text-label uppercase transition-colors', currency === c ? INK : INK_DIM)}
+                style={currency === c ? { backgroundColor: 'var(--color-signal)', color: '#08090b' } : undefined}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div
         role="note"
         className="flex flex-wrap items-baseline gap-x-3 gap-y-2 border px-3 py-2.5"
@@ -701,6 +726,7 @@ export function useCommission({
   formatId,
   frame,
   tier,
+  currency,
   gift,
   giftNote,
   receiptEmail,
@@ -710,6 +736,7 @@ export function useCommission({
   formatId: FormatId;
   frame: FrameOption;
   tier: TierId;
+  currency: Currency;
   gift: boolean | null;
   giftNote: string;
   receiptEmail: string;
@@ -766,6 +793,7 @@ export function useCommission({
       tier,
       formatId,
       frame: activeFrame,
+      currency,
       email: receiptEmail.trim(),
       areaKm: 2,
       dedication: gift && giftNote.trim() ? giftNote.trim() : undefined,
@@ -782,7 +810,7 @@ export function useCommission({
     // detail is ever collected here. In mock mode the URL is the local checkout
     // page, which settles the same way.
     window.location.assign(order.data.checkoutUrl);
-  }, [phase, target, receiptEmail, tier, frame, formatId, gift, giftNote]);
+  }, [phase, target, receiptEmail, tier, frame, formatId, currency, gift, giftNote]);
 
   return { phase, error, emailError, pay, clearEmailError };
 }

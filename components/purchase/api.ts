@@ -95,6 +95,8 @@ export interface CreateOrderInput {
   tier?: string;
   formatId: FormatId;
   frame: FrameOption;
+  /** Buyer-selected billing currency. Absent → derived from the address. */
+  currency?: 'USD' | 'EUR';
   email: string;
   /** Capture footprint in km. Additive to the contract shape; recorded on the order. */
   areaKm: AreaKm;

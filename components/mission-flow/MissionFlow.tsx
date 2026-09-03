@@ -28,6 +28,7 @@ import {
   tierPriceMinor,
 } from '@/lib/mission-flow/config';
 import { resolveAddress, toTargetAddress } from '@/lib/mission-flow/api';
+import type { Currency } from '@/lib/types';
 import { Configurator } from './Configurator';
 import { ClosedRail, SectionRail } from './SectionRail';
 import { PanelFoot, type PrimaryAction } from './PanelFoot';
@@ -126,6 +127,23 @@ export function MissionFlow() {
   const [section, setSection] = useState<SectionId>('target');
   const [why, setWhy] = useState<WhyAnswer | null>(null);
   const [visited, setVisited] = useState<SectionId[]>(['target']);
+  /* Billing currency the buyer has explicitly chosen (USD/EUR). Null = follow
+     the geolocated / address default. Seeded once from the edge IP country. */
+  const [currencyOverride, setCurrencyOverride] = useState<Currency | null>(null);
+  const geoSeeded = useRef(false);
+
+  useEffect(() => {
+    if (geoSeeded.current) return;
+    geoSeeded.current = true;
+    fetch('/api/pricing')
+      .then((r) => r.json())
+      .then((d: { geoCurrency?: Currency }) => {
+        if (d.geoCurrency === 'USD' || d.geoCurrency === 'EUR') {
+          setCurrencyOverride((prev) => prev ?? d.geoCurrency!);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   /* --- Arrival ---------------------------------------------------- */
   useEffect(() => {
@@ -345,7 +363,7 @@ export function MissionFlow() {
      to EUR; the effect above resolves it as soon as a target exists.
   */
   const target = draft.target;
-  const currency = currencyForTarget(target?.address?.countryCode);
+  const currency = currencyOverride ?? currencyForTarget(target?.address?.countryCode);
   const activeFrame = effectiveFrame(draft.tier, draft.frame);
 
   const commission = useCommission({
@@ -353,6 +371,7 @@ export function MissionFlow() {
     formatId: draft.formatId,
     frame: draft.frame,
     tier: draft.tier,
+    currency,
     gift: draft.gift,
     giftNote: draft.giftNote,
     receiptEmail: draft.receiptEmail,
@@ -615,6 +634,7 @@ export function MissionFlow() {
         return (
           <ReviewSection
             currency={currency}
+            onCurrencyChange={setCurrencyOverride}
             /* The Review section propagates the tracked fleet over these
                coordinates to show what a commission actually buys, and
                reads the archive scene to show what an archive one does.
