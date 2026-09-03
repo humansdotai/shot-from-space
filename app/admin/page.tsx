@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 const CSS = `
-.adm{--bg:#0c0c0c;--panel:#141414;--line:#262626;--ink:#ececec;--dim:#8f8f8f;--hot:#ff4d1f;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);color:var(--ink);min-height:100dvh;padding:24px 22px 60px;font-size:12.5px;line-height:1.45}
+.adm{--bg:#0c0c0c;--panel:#141414;--line:#262626;--ink:#ececec;--dim:#8f8f8f;--hot:#ff4d1f;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);color:var(--ink);min-height:100dvh;padding:calc(var(--site-bar-h,70px) + 28px) 22px 60px;font-size:12.5px;line-height:1.45}
 .adm a{color:#9cc4ff;text-decoration:none}.adm a:hover{text-decoration:underline}
 .adm h1{font-size:13px;letter-spacing:.14em;text-transform:uppercase;margin:0}
 .adm .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:18px;margin-bottom:18px}
@@ -52,7 +52,7 @@ const CSS = `
 .adm .btn.hot{background:var(--hot);border-color:var(--hot);color:#0c0c0c}
 .adm .btn.ghost{background:transparent;color:var(--ink)}
 .adm .btn.danger{background:transparent;border-color:#a33;color:#ff8a8a}
-.adm .detail{border:1px solid var(--line);background:var(--panel);padding:16px;position:sticky;top:16px;align-self:start;max-height:calc(100dvh - 32px);overflow:auto}
+.adm .detail{border:1px solid var(--line);background:var(--panel);padding:16px;position:sticky;top:calc(var(--site-bar-h,70px) + 16px);align-self:start;max-height:calc(100dvh - var(--site-bar-h,70px) - 32px);overflow:auto}
 .adm .detailhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
 .adm .preview{background:#000;border:1px solid var(--line);display:flex;justify-content:center;margin-bottom:12px}
 .adm .preview img{max-width:100%;max-height:360px;display:block}
