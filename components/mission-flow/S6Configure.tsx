@@ -126,7 +126,6 @@ export function DesignSection({
             }}
             image={{ src: revealFrameUrl(draft.target.lat, draft.target.lon, 17), unoptimized: true }}
           />
-          <PanelNote className="pt-4">{posterStyleNote(draft.posterStyle)}</PanelNote>
           {COMPOSABLE_STYLE_IDS.length < POSTER_STYLE_IDS.length ? (
             <PanelNote className="pt-2">
               {POSTER_STYLE_IDS.length - COMPOSABLE_STYLE_IDS.length} further compositions are

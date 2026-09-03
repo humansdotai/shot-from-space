@@ -144,8 +144,8 @@ export function RevealStage({ target }: { target: MissionTarget }) {
      taken. `UNDATED` is a value, not a blank — see the note above. */
   const telemetry = [
     telemetryCoords(target.lat, target.lon),
-    scene ? `${scene.altitudeKm} KM` : null,
-    scene ? (scene.acquired ?? 'UNDATED') : null,
+    'ESRI WORLD IMAGERY',
+    'REFERENCE',
   ]
     .filter(Boolean)
     .join('  ·  ');
@@ -158,7 +158,7 @@ export function RevealStage({ target }: { target: MissionTarget }) {
           src={frame.src}
           alt={
             i === frames.length - 1
-              ? `Archive scene${scene ? ` from ${scene.city}` : ''}, cropped for preview at the target coordinates. Not a live capture.`
+              ? 'Reference imagery at the target coordinates. Not your capture.'
               : ''
           }
           aria-hidden={i !== frames.length - 1}
@@ -321,7 +321,6 @@ function TargetRecord({ target }: { target: MissionTarget }) {
 
       <PanelNote>
         {REVEAL_SOURCE_NOTICE}
-        {scene?.acquired ? ` Reference scene dated ${scene.acquired}.` : ''}
       </PanelNote>
     </PanelStack>
   );
