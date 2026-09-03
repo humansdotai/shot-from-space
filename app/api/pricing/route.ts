@@ -24,6 +24,7 @@ import type { Currency, FormatId, FrameOption } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 const FRAMES: FrameOption[] = ['UNFRAMED', 'FRAMED'];
 const TIERS: PricingTier[] = ['ARCHIVE', 'COMMISSION', 'COMMISSION_LARGE_FORMAT'];

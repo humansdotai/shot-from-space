@@ -10,10 +10,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { archiveScenes, liveQuote } from '@/lib/pricing-live';
 import { resLabel } from '@/lib/pricing-model';
+import { thumbProxyPath } from '@/lib/archive-thumb';
 import type { Currency, FormatId, FrameOption } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 function num(v: string | null): number | undefined {
   if (v == null || v === '') return undefined;
@@ -49,7 +51,7 @@ export async function GET(req: NextRequest) {
         openData: Boolean(s.openData),
         totalMinor: quote.totalMinor,
         currency,
-        thumb: s.thumb ? `/api/archives/thumb/${encodeURIComponent(s.id as string)}?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}` : null,
+        thumb: s.thumb ? thumbProxyPath(s.thumb) : null,
       };
     }),
   );

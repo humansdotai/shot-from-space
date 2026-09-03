@@ -105,6 +105,7 @@ async function fetchSkyfiRates(key: string, lat?: number, lon?: number, areaKm =
   const headers = { 'X-Skyfi-Api-Key': apiKey, 'Content-Type': 'application/json' };
   const aoi = wktSquare(lat ?? 48.8584, lon ?? 2.2945, Math.max(areaKm, 1));
   const rates: ImageryRates = { ...FALLBACK_RATES };
+  let archivesOk = false;
 
   try {
     const res = await fetch(`${base}/pricing`, {
@@ -133,7 +134,7 @@ async function fetchSkyfiRates(key: string, lat?: number, lon?: number, areaKm =
     const res = await fetch(`${base}/archives`, {
       method: 'POST', headers, cache: 'no-store',
       body: JSON.stringify({ aoi, fromDate: from.toISOString(), toDate: to.toISOString(), productTypes: ['DAY'], pageSize: 40 }),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(20_000),
     });
     const d = (await res.json()) as {
       archives?: {
@@ -180,6 +181,7 @@ async function fetchSkyfiRates(key: string, lat?: number, lon?: number, areaKm =
       });
     }
     scenes.sort((x, y) => (y.capturedAt ?? '').localeCompare(x.capturedAt ?? ''));
+    archivesOk = Array.isArray(d.archives);
     if (scenes.length > 0) {
       rates.archiveScenes = scenes;
       const best = bestArchiveScene(rates.archiveScenes, Math.max(areaKm, 1) ** 2);
@@ -194,7 +196,9 @@ async function fetchSkyfiRates(key: string, lat?: number, lon?: number, areaKm =
     /* keep fallback */
   }
 
-  skyfiCache.set(key, { v: rates, at: Date.now() });
+  // A complete read is good for an hour; a partial one (timeout, outage)
+  // is retried after a minute rather than pinning the fallback all day.
+  skyfiCache.set(key, { v: rates, at: archivesOk ? Date.now() : Date.now() - TTL_MS + 60_000 });
   return rates;
 }
 
