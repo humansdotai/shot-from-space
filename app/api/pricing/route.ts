@@ -51,7 +51,8 @@ export async function GET(req: NextRequest) {
   const lon = num(q.get('lon'));
   const areaRaw = num(q.get('area'));
   const areaKm = areaRaw ? Math.min(5, Math.max(0.4, areaRaw)) : undefined;
-  const target = { lat, lon, areaKm };
+  const archiveId = q.get('archiveId')?.trim() || null;
+  const target = { lat, lon, areaKm, archiveId };
 
   const tierRaw = q.get('tier');
   const tier: PricingTier = TIERS.includes(tierRaw as PricingTier) ? (tierRaw as PricingTier) : 'COMMISSION';

@@ -29,6 +29,15 @@ export interface ArchiveScene {
   resolution: string;
   perKm2: number;
   minKm2: number;
+  /** Catalogue identity and metadata, present for live scenes. */
+  id?: string;
+  capturedAt?: string;
+  gsdCm?: number;
+  cloudPct?: number;
+  offNadirDeg?: number;
+  openData?: boolean;
+  /** Supplier thumbnail URL — server-side only; the site proxies it. */
+  thumb?: string | null;
 }
 
 export interface ImageryRates {
@@ -86,20 +95,22 @@ export const PRINT_FALLBACK: Record<FormatId, Record<FrameOption, Record<Currenc
 };
 
 /** SkyFi cost in USD for one tier over a square footprint of `areaKm` per side. */
-export function imageryUsd(tier: PricingTier, rates: ImageryRates, areaKm: number) {
+export function imageryUsd(tier: PricingTier, rates: ImageryRates, areaKm: number, archiveId?: string | null) {
   const footprint = areaKm * areaKm;
   if (tier === 'ARCHIVE') {
-    const scene = bestArchiveScene(rates.archiveScenes, footprint) ?? {
+    const chosen = archiveId ? rates.archiveScenes.find((x) => x.id === archiveId) : undefined;
+    const scene = chosen ?? bestArchiveScene(rates.archiveScenes, footprint) ?? {
       provider: rates.archiveProvider,
       resolution: '',
       perKm2: rates.archivePerKm2,
       minKm2: rates.archiveMinKm2,
     };
     const billed = Math.max(footprint, scene.minKm2);
+    const when = scene.capturedAt ? ` from ${scene.capturedAt.slice(0, 10)}` : '';
     return {
-      usd: scene.perKm2 * billed,
+      usd: scene.openData ? 0 : scene.perKm2 * billed,
       billedKm2: billed,
-      note: `existing ${resLabel(scene.resolution)} scene · ${trim(billed)} km² billed`,
+      note: `existing ${resLabel(scene.resolution)} scene${when} · ${trim(billed)} km² billed`,
     };
   }
   const billed = Math.max(footprint, rates.taskingMinKm2);
@@ -153,7 +164,7 @@ export function fallbackTierPriceMinor(
   areaKm: number = DEFAULT_AREA_KM,
 ): number {
   return quoteFromParts({
-    imageryUsd: imageryUsd(tier, FALLBACK_RATES, areaKm).usd,
+    imageryUsd: imageryUsd(tier, FALLBACK_RATES, areaKm, null).usd,
     print: PRINT_FALLBACK[formatId][frame][currency],
     currency,
     usdToEur: FALLBACK_USD_EUR,
@@ -201,7 +212,7 @@ export function hasLivePriceTable(currency: Currency): boolean {
 function round2(n: number) { return Math.round(n * 100) / 100; }
 
 /** Customer-facing resolution wording; supplier tier names never reach the site. */
-function resLabel(resolution: string): string {
+export function resLabel(resolution: string): string {
   switch (resolution) {
     case 'SUPER HIGH': return '≈0.3 m';
     case 'VERY HIGH': return '≈0.5 m';

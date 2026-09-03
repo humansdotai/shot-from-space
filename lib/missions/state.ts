@@ -24,7 +24,7 @@ import type { FormatId, FrameOption, MissionStage, MissionState, Region } from '
 import { getFormat, PRINT_FACILITY, formatPrice } from '@/lib/pricing';
 import { CLOUD_THRESHOLD_PCT, materialLine } from '@/lib/guarantees';
 import { formatCoords, formatTelemetryDate, formatTelemetryTimestamp } from '@/lib/utils';
-import { requestTasking, fetchCapture } from '@/lib/integrations/skyfi';
+import { requestArchiveOrder, requestTasking, fetchCapture } from '@/lib/integrations/skyfi';
 import { refundPayment } from '@/lib/integrations/stripe';
 import { printFileUrlFor } from '@/lib/print-file';
 import { createPrintOrder, getOrderStatus, mockShipment } from '@/lib/integrations/gelato';
@@ -217,6 +217,34 @@ async function enterStage(row: MissionRow, stage: MissionStage, at: Date): Promi
 
     /* -------------------------------------------------------------- */
     case 'SATELLITE_TASKED': {
+      // An ARCHIVE order buys the scene the buyer chose; nothing is tasked.
+      if (row.skyfiArchiveId) {
+        const order = await requestArchiveOrder({
+          lat: row.lat,
+          lon: row.lon,
+          areaKm: row.areaKm,
+          missionCode: code,
+          archiveId: row.skyfiArchiveId,
+          capturedAt: row.archiveCapturedAt?.toISOString() ?? null,
+        });
+        const opens = new Date(order.windowOpensAt);
+        const closes = new Date(order.windowClosesAt);
+        const shot = row.archiveCapturedAt ? formatTelemetryDate(row.archiveCapturedAt) : 'the chosen date';
+        return {
+          data: {
+            skyfiOrderId: order.orderId,
+            windowOpensAt: opens,
+            windowClosesAt: closes,
+            gsdM: order.gsdM,
+            offNadirDeg: order.offNadirDeg,
+            cloudPct: order.cloudPct,
+          },
+          detail:
+            `Existing capture from ${shot} ordered (order ${order.orderId}). No pass is flown: ` +
+            `the frame is delivered from the archive, expected by ${formatTelemetryDate(closes)}.`,
+        };
+      }
+
       // The collection is booked with the constellation operator.
       const tasking = await requestTasking({
         lat: row.lat,
@@ -251,6 +279,14 @@ async function enterStage(row: MissionRow, stage: MissionStage, at: Date): Promi
 
     /* -------------------------------------------------------------- */
     case 'CAPTURE_WINDOW': {
+      if (row.skyfiArchiveId) {
+        return {
+          data: {},
+          detail:
+            `No pass to wait for: the frame was captured on ` +
+            `${row.archiveCapturedAt ? formatTelemetryDate(row.archiveCapturedAt) : 'the chosen date'} and is being delivered from the archive.`,
+        };
+      }
       // No external call — the window was booked at tasking. This stage is
       // the honest admission that we are waiting for weather.
       const passes = seededInt(`passes:${code}`, 3, 7);
@@ -275,7 +311,8 @@ async function enterStage(row: MissionRow, stage: MissionStage, at: Date): Promi
       // a catalogue frame. In live mode the frame comes from the downlinked
       // asset instead and imagerySlug becomes decorative.
       const capture = row.skyfiOrderId ? await fetchCapture(row.skyfiOrderId).catch(() => null) : null;
-      const capturedAt = at;
+      // A historical scene keeps its real capture date; a new tasking is stamped now.
+      const capturedAt = row.archiveCapturedAt ?? at;
       const cloudPct = capture?.cloudPct ?? row.cloudPct;
       const slug = pickFrameSlugForCoords(row.lat, row.lon);
 

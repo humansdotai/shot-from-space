@@ -60,6 +60,16 @@ export interface TaskingRequest {
   missionCode: string;
 }
 
+export interface ArchiveOrderRequest {
+  lat: number;
+  lon: number;
+  areaKm: number;
+  missionCode: string;
+  archiveId: string;
+  /** ISO timestamp of the scene, for the mission record. */
+  capturedAt?: string | null;
+}
+
 export interface TaskingResult {
   orderId: string;
   /** ISO 8601. */
@@ -114,6 +124,8 @@ export interface CaptureResult {
 }
 
 export interface SkyfiAdapter {
+  /** Orders an EXISTING scene by archive id — no satellite is tasked. */
+  requestArchiveOrder(input: ArchiveOrderRequest): Promise<TaskingResult>;
   requestTasking(input: TaskingRequest): Promise<TaskingResult>;
   getTaskingStatus(orderId: string): Promise<TaskingStatusResult>;
   fetchCapture(orderId: string): Promise<CaptureResult>;
@@ -162,6 +174,17 @@ function mockCoordsForOrder(orderId: string): { lat: number; lon: number } {
 /* ------------------------------------------------------------------ */
 
 export const mock: SkyfiAdapter = {
+  async requestArchiveOrder(input) {
+    const t = await mock.requestTasking(input);
+    const now = new Date();
+    return {
+      ...t,
+      orderId: `ARC-${input.missionCode}-${input.archiveId.slice(0, 8).toUpperCase()}`,
+      windowOpensAt: now.toISOString(),
+      windowClosesAt: new Date(now.getTime() + 12 * 3_600_000).toISOString(),
+      passes: 1,
+    };
+  },
   async requestTasking(input) {
     // Real tasking acceptance is a slow, synchronous-feeling call.
     await sleep(340 + Math.round(seededUnit(`skylat:${input.missionCode}`) * 260));
@@ -272,6 +295,39 @@ export function aoiPolygon(lat: number, lon: number, areaKm: number) {
 }
 
 export const live: SkyfiAdapter = {
+  async requestArchiveOrder(input) {
+    const base = INTEGRATIONS.skyfi.baseUrl;
+    const res = await fetch(`${base}/order-archive`, {
+      method: 'POST',
+      headers: liveHeaders(),
+      body: JSON.stringify({
+        aoi: aoiPolygon(input.lat, input.lon, input.areaKm),
+        archiveId: input.archiveId,
+        label: input.missionCode,
+        orderLabel: `MISSION ${input.missionCode}`,
+        metadata: { missionCode: input.missionCode },
+      }),
+    });
+    if (!res.ok) throw new Error(`skyfi archive order failed: ${res.status} ${await res.text()}`);
+    const json = (await res.json()) as Record<string, unknown>;
+    const t = missionTelemetry(input.missionCode);
+    const now = new Date();
+    const hours = Number(json.deliveryTimeHours ?? 12);
+    return {
+      orderId: String(json.orderId ?? json.id ?? ''),
+      windowOpensAt: now.toISOString(),
+      windowClosesAt: new Date(now.getTime() + hours * 3_600_000).toISOString(),
+      sensor: String(json.satellite ?? t.sensor),
+      gsdM: Number(json.resolutionMeters ?? t.gsdM),
+      azimuthDeg: t.azimuthDeg,
+      offNadirDeg: Number(json.offNadirAngle ?? t.offNadirDeg),
+      inclination: t.inclination,
+      track: t.track,
+      altitudeKm: t.altitudeKm,
+      cloudPct: Number(json.cloudCoveragePercent ?? t.cloudPct),
+      passes: 1,
+    };
+  },
   async requestTasking(input) {
     const base = INTEGRATIONS.skyfi.baseUrl;
     const now = Date.now();
@@ -383,6 +439,15 @@ function adapter(): SkyfiAdapter {
 }
 
 /** Books a collection. Falls back to the mock so a mission never stalls. */
+export async function requestArchiveOrder(input: ArchiveOrderRequest): Promise<TaskingResult> {
+  try {
+    return await adapter().requestArchiveOrder(input);
+  } catch (err) {
+    console.error('[skyfi] requestArchiveOrder failed:', (err as Error).message);
+    return mock.requestArchiveOrder(input);
+  }
+}
+
 export async function requestTasking(input: TaskingRequest): Promise<TaskingResult> {
   try {
     return await adapter().requestTasking(input);

@@ -23,6 +23,7 @@ import {
 import { track } from '@/lib/mission-flow/track';
 import {
   currencyForTarget,
+  DEFAULT_TIER,
   effectiveFrame,
   missionNameForPlace,
   TIER_COPY,
@@ -160,6 +161,7 @@ export function MissionFlow() {
   const liveTier = draft.tier;
   const liveFormat = draft.formatId;
   const liveFrame = effectiveFrame(draft.tier, draft.frame);
+  const liveArchiveId = draft.archive?.id ?? null;
   const liveCurrency: Currency =
     currencyOverride ?? currencyForTarget(draft.target?.address?.countryCode);
   useEffect(() => {
@@ -171,6 +173,7 @@ export function MissionFlow() {
       formatId: liveFormat,
       frame: liveFrame,
     });
+    if (liveArchiveId) q.set('archiveId', liveArchiveId);
     if (typeof liveLat === 'number' && typeof liveLon === 'number') {
       q.set('lat', liveLat.toFixed(4));
       q.set('lon', liveLon.toFixed(4));
@@ -192,7 +195,7 @@ export function MissionFlow() {
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [liveLat, liveLon, liveArea, liveCurrency, liveTier, liveFormat, liveFrame]);
+  }, [liveLat, liveLon, liveArea, liveCurrency, liveTier, liveFormat, liveFrame, liveArchiveId]);
 
   /* THE MISSION NAME FOLLOWS THE PLACE until the reader types their own.
      "MISSION 001" for everyone was the defect: the default is now built
@@ -443,6 +446,7 @@ export function MissionFlow() {
     areaKm: draft.areaKm,
     missionName: draft.missionName,
     posterStyle: draft.posterStyle,
+    archiveId: draft.archive?.id ?? null,
     gift: draft.gift,
     giftNote: draft.giftNote,
     receiptEmail: draft.receiptEmail,
@@ -706,6 +710,23 @@ export function MissionFlow() {
               patch({ window: w });
               track('step_completed', 'windows', { window: w.date, indicative: w.indicative });
             }}
+            archive={draft.archive}
+            onArchive={(scene) => {
+              /* A historical scene IS the archive tier: choosing one selects it. */
+              patch({ archive: scene, tier: 'ARCHIVE' });
+              track('step_completed', 'windows', { archive: scene.capturedAt.slice(0, 10) });
+            }}
+            onNewCapture={() =>
+              setDraft((d) =>
+                d.archive || d.tier === 'ARCHIVE'
+                  ? { ...d, archive: null, tier: d.tier === 'ARCHIVE' ? DEFAULT_TIER : d.tier }
+                  : d,
+              )
+            }
+            areaKm={draft.areaKm}
+            currency={currency}
+            formatId={draft.formatId}
+            frame={effectiveFrame('ARCHIVE', draft.frame)}
           />
         ) : null;
 
@@ -727,7 +748,10 @@ export function MissionFlow() {
             gift={draft.gift}
             giftNote={draft.giftNote}
             receiptEmail={draft.receiptEmail}
-            onTier={(tier) => patch({ tier })}
+            archive={draft.archive}
+            onTier={(tier) =>
+              setDraft((d) => ({ ...d, tier, archive: tier === 'ARCHIVE' ? d.archive : null }))
+            }
             onGiftNote={(giftNote) => patch({ giftNote })}
             onEmail={(receiptEmail) => {
               patch({ receiptEmail });

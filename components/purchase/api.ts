@@ -109,6 +109,8 @@ export interface CreateOrderInput {
   /** The buyer's mission name (shown on the mission file) and poster composition. */
   missionName?: string;
   posterStyle?: string;
+  /** A historical scene chosen on the Window step; makes this an archive order. */
+  archiveId?: string;
 }
 
 export interface CreateOrderResult {

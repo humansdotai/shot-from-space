@@ -5,6 +5,7 @@ import { INK, INK_DIM, RULE, SpecRow } from '@/components/purchase/fields';
 import { getFormat, formatPrice } from '@/lib/pricing';
 import type { Currency } from '@/lib/types';
 import { effectiveFrame, TIER_COPY, tierPriceMinor, type TierId } from '@/lib/mission-flow/config';
+import { captureDate } from './S7Archives';
 import { telemetryCoords } from '@/lib/mission-flow/entry';
 import { revealFrameUrl } from '@/lib/mission-flow/api';
 import type { MissionDraft } from '@/lib/mission-flow/state';
@@ -128,7 +129,11 @@ export function DossierDocument({
                 />
               </>
             ) : (
-              <SpecRow label="Capture window" value="Not tasked" />
+              <SpecRow
+                label="Captured"
+                value={draft.archive ? captureDate(draft.archive.capturedAt) : 'Most recent on file'}
+                mono
+              />
             )}
             <SpecRow label="Format" value={`${format.designation} / ${format.metric}`} />
             <SpecRow label="Finish" value={activeFrame === 'FRAMED' ? 'Framed' : 'Unframed'} />

@@ -53,6 +53,8 @@ const Body = z.object({
   /** The buyer's mission name and chosen poster composition. */
   missionName: z.string().trim().max(40).optional(),
   posterStyle: z.string().trim().max(40).optional(),
+  /** A historical scene chosen on the Window step — makes the order an archive order. */
+  archiveId: z.string().trim().max(80).optional(),
   /**
    * "What is this place?" — the line printed on the mission sheet.
    *
@@ -76,7 +78,7 @@ export async function POST(req: Request) {
   const parsed = await readJson(req, Body);
   if (parsed.response) return parsed.response;
 
-  const { address, tier, formatId, frame, email, areaKm, dedication, missionName, posterStyle } = parsed.data;
+  const { address, tier, formatId, frame, email, areaKm, dedication, missionName, posterStyle, archiveId } = parsed.data;
 
   // The buyer's currency choice wins; otherwise the address decides. The order
   // and the Stripe session are priced in the SAME currency so the button and
@@ -96,6 +98,7 @@ export async function POST(req: Request) {
       dedication,
       missionName,
       posterStyle,
+      archiveId,
     });
 
     const format = getFormat(formatId);

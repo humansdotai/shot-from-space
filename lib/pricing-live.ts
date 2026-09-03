@@ -129,31 +129,59 @@ async function fetchSkyfiRates(key: string, lat?: number, lon?: number, areaKm =
 
   try {
     const to = new Date();
-    const from = new Date(to.getTime() - 3 * 365 * 86_400_000);
+    const from = new Date(to.getTime() - 5 * 365 * 86_400_000);
     const res = await fetch(`${base}/archives`, {
       method: 'POST', headers, cache: 'no-store',
       body: JSON.stringify({ aoi, fromDate: from.toISOString(), toDate: to.toISOString(), productTypes: ['DAY'], pageSize: 40 }),
       signal: AbortSignal.timeout(8000),
     });
-    const d = (await res.json()) as { archives?: { provider?: string; resolution?: string; priceForOneSquareKm?: number; minSqKm?: number }[] };
-    // Keep every priced scene (one per provider × resolution, cheapest); the
-    // quote picks the lowest BILLED total for the actual footprint, ≈0.5 m
-    // preferred over ≈1 m (lib/pricing-model.ts → bestArchiveScene).
-    const seen = new Map<string, ArchiveScene>();
-    for (const a of d.archives ?? []) {
-      if (!(a.priceForOneSquareKm && a.priceForOneSquareKm > 0)) continue;
-      const scene: ArchiveScene = {
+    const d = (await res.json()) as {
+      archives?: {
+        archiveId?: string; captureTimestamp?: string; provider?: string; resolution?: string;
+        priceForOneSquareKm?: number; minSqKm?: number; gsd?: number; cloudCoveragePercent?: number;
+        offNadirAngle?: number; openData?: boolean; thumbnailUrls?: Record<string, string>;
+      }[];
+      nextPage?: string;
+    };
+    // Keep EVERY priced scene with its identity and metadata: the Window
+    // step lists them as selectable historical captures, and a chosen id
+    // prices the archive tier. Without a choice the quote picks the lowest
+    // billed total for the footprint (lib/pricing-model.ts → bestArchiveScene).
+    const scenes: ArchiveScene[] = [];
+    const pages = [d.archives ?? []];
+    if (d.nextPage && (d.archives?.length ?? 0) >= 40) {
+      try {
+        const more = await fetch(`${base.replace(/\/platform-api$/, '')}${d.nextPage}`, {
+          method: 'POST', headers, cache: 'no-store',
+          body: JSON.stringify({ aoi, fromDate: from.toISOString(), toDate: to.toISOString(), productTypes: ['DAY'], pageSize: 40 }),
+          signal: AbortSignal.timeout(8000),
+        });
+        const d2 = (await more.json()) as { archives?: typeof d.archives };
+        pages.push(d2.archives ?? []);
+      } catch {
+        /* one page is enough */
+      }
+    }
+    for (const a of pages.flat()) {
+      const priced = (a.priceForOneSquareKm ?? 0) > 0;
+      if (!priced && !a.openData) continue;
+      scenes.push({
         provider: a.provider ?? 'SKYFI',
         resolution: a.resolution ?? 'HIGH',
-        perKm2: a.priceForOneSquareKm,
+        perKm2: a.priceForOneSquareKm ?? 0,
         minKm2: a.minSqKm ?? 1,
-      };
-      const k = `${scene.provider}/${scene.resolution}`;
-      const prev = seen.get(k);
-      if (!prev || scene.perKm2 * Math.max(1, scene.minKm2) < prev.perKm2 * Math.max(1, prev.minKm2)) seen.set(k, scene);
+        id: a.archiveId,
+        capturedAt: a.captureTimestamp,
+        gsdCm: typeof a.gsd === 'number' ? Math.round(a.gsd) : undefined,
+        cloudPct: typeof a.cloudCoveragePercent === 'number' ? Math.round(a.cloudCoveragePercent * 10) / 10 : undefined,
+        offNadirDeg: typeof a.offNadirAngle === 'number' ? Math.round(a.offNadirAngle * 10) / 10 : undefined,
+        openData: Boolean(a.openData),
+        thumb: a.thumbnailUrls?.['300x300'] ?? null,
+      });
     }
-    if (seen.size > 0) {
-      rates.archiveScenes = [...seen.values()];
+    scenes.sort((x, y) => (y.capturedAt ?? '').localeCompare(x.capturedAt ?? ''));
+    if (scenes.length > 0) {
+      rates.archiveScenes = scenes;
       const best = bestArchiveScene(rates.archiveScenes, Math.max(areaKm, 1) ** 2);
       if (best) {
         rates.archivePerKm2 = best.perKm2;
@@ -181,7 +209,13 @@ export interface LiveQuote extends QuoteBreakdown {
   ratesSource: ImageryRates['source'];
 }
 
-export interface QuoteTarget { areaKm?: number; lat?: number; lon?: number }
+export interface QuoteTarget { areaKm?: number; lat?: number; lon?: number; archiveId?: string | null }
+
+/** The historical scenes on file over a target, newest first (server-side shape). */
+export async function archiveScenes(lat: number, lon: number, areaKm = DEFAULT_AREA_KM): Promise<ArchiveScene[]> {
+  const rates = await skyfiRates(lat, lon, areaKm);
+  return rates.archiveScenes.filter((s) => Boolean(s.id));
+}
 
 export async function liveQuote(
   tier: PricingTier,
@@ -196,7 +230,7 @@ export async function liveQuote(
     gelatoPrice(formatId, frame, currency),
     usdToEur(),
   ]);
-  const img = imageryUsd(tier, rates, areaKm);
+  const img = imageryUsd(tier, rates, areaKm, opts.archiveId ?? null);
   const print = gelato.printCost ?? PRINT_FALLBACK[formatId][frame][currency];
   const q = quoteFromParts({ imageryUsd: img.usd, print, currency, usdToEur: fx });
   return {

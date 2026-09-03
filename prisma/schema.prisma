@@ -118,6 +118,9 @@ model Mission {
 
   // --- Tasking / capture ---------------------------------------
   skyfiOrderId   String?
+  /// The historical scene the buyer chose (archive tier). Null = new tasking / cheapest scene.
+  skyfiArchiveId    String?
+  archiveCapturedAt DateTime?
   windowOpensAt  DateTime?
   windowClosesAt DateTime?
   capturedAt     DateTime?

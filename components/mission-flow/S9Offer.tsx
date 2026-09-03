@@ -16,6 +16,8 @@ import {
 } from '@/components/purchase/fields';
 import { formatPrice, getFormat } from '@/lib/pricing';
 import { missionShortLink } from '@/lib/codes';
+import { captureDate } from './S7Archives';
+import type { ChosenArchive } from '@/lib/mission-flow/state';
 import { guaranteeTerm } from '@/lib/guarantees';
 import type { Currency, FormatId, FrameOption } from '@/lib/types';
 import {
@@ -160,6 +162,7 @@ export function ReviewSection({
   onEmail,
   currency,
   onCurrencyChange,
+  archive = null,
   phase,
   opened = null,
   error,
@@ -189,6 +192,8 @@ export function ReviewSection({
   currency: Currency;
   /** Switch the billing currency (USD/EUR). */
   onCurrencyChange?: (c: Currency) => void;
+  /** The historical scene chosen on the Window step, if any. */
+  archive?: ChosenArchive | null;
   phase: CommissionPhase;
   /** The opened order (code + keyed link), while the checkout redirect is pending. */
   opened?: OpenedOrder | null;
@@ -253,19 +258,16 @@ export function ReviewSection({
                 sky in the next {overhead.searchHours / 24} days.
               </>
             ) : null
-          ) : scene ? (
-            /* The archive card carries the archive's own evidence: the
-               scene actually on file for these coordinates, and its date
-               when the record has one. `scene.acquired` is already null
-               beyond `ARCHIVE_MATCH_RADIUS_KM`, where the frame is a
-               stand-in for somewhere else and has no date to quote. */
+          ) : archive ? (
             <>
               {' '}
-              {scene.acquired
-                ? `The scene on file was acquired ${scene.acquired}.`
-                : 'The scene on file for these coordinates carries no acquisition date.'}
+              Your chosen capture: {captureDate(archive.capturedAt)}
+              {archive.gsdCm ? `, ${archive.gsdCm} cm per pixel` : ''}
+              {archive.cloudPct !== null ? `, ${archive.cloudPct}% cloud` : ''}.
             </>
-          ) : null}
+          ) : (
+            <> The most recent priced capture on file is used; pick a specific one on the Window step.</>
+          )}
         </>
       ),
       /* `asideLabel` is what turns a bare number into a labelled field. The
@@ -733,6 +735,7 @@ export function useCommission({
   areaKm,
   missionName,
   posterStyle,
+  archiveId,
   gift,
   giftNote,
   receiptEmail,
@@ -748,6 +751,8 @@ export function useCommission({
   /** The buyer's mission name and poster composition, recorded on the order. */
   missionName: string;
   posterStyle: string;
+  /** The historical scene chosen on the Window step, if any. */
+  archiveId: string | null;
   gift: boolean | null;
   giftNote: string;
   receiptEmail: string;
@@ -810,6 +815,7 @@ export function useCommission({
       areaKm,
       missionName: missionName.trim() || undefined,
       posterStyle,
+      archiveId: archiveId ?? undefined,
       dedication: gift && giftNote.trim() ? giftNote.trim() : undefined,
     });
 
@@ -829,7 +835,7 @@ export function useCommission({
     setOpened({ missionCode: order.data.missionCode, missionLink, checkoutUrl: order.data.checkoutUrl });
     setPhase('opened');
     window.setTimeout(() => window.location.assign(order.data.checkoutUrl), 3500);
-  }, [phase, target, receiptEmail, tier, frame, formatId, currency, areaKm, missionName, posterStyle, gift, giftNote]);
+  }, [phase, target, receiptEmail, tier, frame, formatId, currency, areaKm, missionName, posterStyle, archiveId, gift, giftNote]);
 
   return { phase, opened, error, emailError, pay, clearEmailError };
 }

@@ -65,6 +65,16 @@ export interface ChosenWindow {
   indicative: boolean;
 }
 
+/** A historical scene chosen on the Window step — an ARCHIVE order for exactly that capture. */
+export interface ChosenArchive {
+  id: string;
+  /** ISO timestamp of the capture. */
+  capturedAt: string;
+  gsdCm: number | null;
+  cloudPct: number | null;
+  resolution: string;
+}
+
 export interface MissionDraft {
   target: MissionTarget | null;
   /** Screen 3. A gift changes checkout and the confirmation, so it is state. */
@@ -103,6 +113,8 @@ export interface MissionDraft {
   earliest: string | null;
   /** Screen 7. */
   window: ChosenWindow | null;
+  /** Existing capture chosen instead of a new tasking. Null = new capture. */
+  archive: ChosenArchive | null;
   /** Screen 9. */
   tier: TierId;
   /** Set at checkout, and the only place an email is ever held. */
@@ -133,6 +145,7 @@ export const DEFAULT_DRAFT: MissionDraft = {
   posterStyle: DEFAULT_POSTER_STYLE_ID,
   earliest: null,
   window: null,
+  archive: null,
   tier: DEFAULT_TIER,
   receiptEmail: '',
   giftNote: '',
@@ -213,6 +226,19 @@ function reviveTarget(v: unknown): MissionTarget | null {
   };
 }
 
+function reviveArchive(v: unknown): ChosenArchive | null {
+  if (typeof v !== 'object' || v === null) return null;
+  const a = v as Record<string, unknown>;
+  if (typeof a.id !== 'string' || !a.id || typeof a.capturedAt !== 'string') return null;
+  return {
+    id: a.id.slice(0, 80),
+    capturedAt: a.capturedAt,
+    gsdCm: typeof a.gsdCm === 'number' ? a.gsdCm : null,
+    cloudPct: typeof a.cloudPct === 'number' ? a.cloudPct : null,
+    resolution: typeof a.resolution === 'string' ? a.resolution.slice(0, 20) : 'high-resolution',
+  };
+}
+
 function reviveWindow(v: unknown): ChosenWindow | null {
   if (typeof v !== 'object' || v === null) return null;
   const w = v as Record<string, unknown>;
@@ -287,6 +313,7 @@ export function loadFlow(): StoredFlow | null {
     // windows the buyer can actually have.
     earliest: isFutureIsoDate(d.earliest) ? (d.earliest as string) : null,
     window: reviveWindow(d.window),
+    archive: reviveArchive(d.archive),
     tier: TIER_IDS.includes(d.tier as TierId) ? (d.tier as TierId) : DEFAULT_DRAFT.tier,
     receiptEmail: cleanText(d.receiptEmail, 254),
     giftNote: cleanText(d.giftNote, 400),

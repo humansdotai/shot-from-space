@@ -209,7 +209,7 @@ export function sectionAnswered(id: SectionId, draft: MissionDraft): boolean {
     case 'mission':
       return draft.gift !== null && draft.missionName.trim().length >= 3;
     case 'window':
-      return draft.window !== null;
+      return draft.window !== null || draft.archive !== null;
     case 'review':
     case 'confirmation':
       return draft.missionCode !== null;

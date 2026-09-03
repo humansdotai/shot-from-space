@@ -21,6 +21,10 @@ import type { OverheadResult, OverheadSatellite } from '@/lib/mission-flow/overh
 import { telemetryCoords } from '@/lib/mission-flow/entry';
 import type { ChosenWindow } from '@/lib/mission-flow/state';
 import { PanelGroup, PanelHead, PanelNote, PanelStack, PreviewDisclosure } from './Panel';
+import { ExistingCaptures } from './S7Archives';
+import { Segmented } from '@/components/purchase/fields';
+import type { ChosenArchive } from '@/lib/mission-flow/state';
+import type { Currency, FormatId, FrameOption } from '@/lib/types';
 import { CardGroup, type CardOption } from './CardGroup';
 
 /**
@@ -87,20 +91,33 @@ export function WindowSection({
   earliest,
   chosen,
   onSelect,
+  archive = null,
+  onArchive,
+  onNewCapture,
+  areaKm = 2,
+  currency = 'EUR',
+  formatId = 'F50',
+  frame = 'UNFRAMED',
 }: {
   lat: number;
   lon: number;
-  /**
-   * The earliest capture date the buyer named at the door, ISO
-   * `YYYY-MM-DD`, or null for first-available. A PREFERENCE ONLY — see
-   * `MissionDraft.earliest`. It decides which of the windows below opens
-   * selected and nothing else; it never produces a window, never moves
-   * one, and never suppresses one.
-   */
   earliest: string | null;
   chosen: ChosenWindow | null;
   onSelect: (w: ChosenWindow) => void;
+  /** The historical scene chosen instead of a new tasking, if any. */
+  archive?: ChosenArchive | null;
+  onArchive?: (scene: ChosenArchive) => void;
+  /** Back to a new capture: clears the chosen scene. */
+  onNewCapture?: () => void;
+  areaKm?: number;
+  currency?: Currency;
+  formatId?: FormatId;
+  frame?: FrameOption;
 }) {
+  const [mode, setMode] = useState<'new' | 'existing'>(archive ? 'existing' : 'new');
+  useEffect(() => {
+    if (archive) setMode('existing');
+  }, [archive]);
   const [windowsState, setWindowsState] = useState<StepState>('waiting');
   const [fleetState, setFleetState] = useState<StepState>('waiting');
   const [overheadState, setOverheadState] = useState<StepState>('waiting');
@@ -270,9 +287,43 @@ export function WindowSection({
           cut is not dropped: the provenance line at ❹ states the element
           source, its age and how many sets were usable, in more detail than
           a standfirst can. */}
-      <PanelHead eyebrow="Capture" title="Next capture windows.">
-        Pick the day. The operator flies the best pass on it.
+      <PanelHead
+        eyebrow="Capture"
+        title={mode === 'existing' ? 'Existing captures.' : 'Next capture windows.'}
+      >
+        {mode === 'existing'
+          ? 'Pick a past capture of this ground. It ships without waiting for a pass.'
+          : 'Pick the day. The operator flies the best pass on it.'}
       </PanelHead>
+
+      <Segmented<'new' | 'existing'>
+        name="capture-mode"
+        label="Capture"
+        value={mode}
+        onChange={(m) => {
+          setMode(m);
+          if (m === 'new') onNewCapture?.();
+        }}
+        options={[
+          { value: 'new', label: 'New capture', sub: 'A satellite is tasked' },
+          { value: 'existing', label: 'Existing capture', sub: 'Historical scene on file' },
+        ]}
+      />
+
+      {mode === 'existing' ? (
+        <ExistingCaptures
+          lat={lat}
+          lon={lon}
+          areaKm={areaKm}
+          currency={currency}
+          formatId={formatId}
+          frame={frame}
+          chosen={archive}
+          onSelect={(scene) => onArchive?.(scene)}
+        />
+      ) : null}
+
+      <div hidden={mode === 'existing'} className="contents">
 
       {/* THE COMPUTATION IS SHOWN WHILE IT IS HAPPENING, AND THEN IT GETS
           OUT OF THE WAY. Three log rows above the decision are honest for
@@ -417,6 +468,7 @@ export function WindowSection({
       ) : null}
 
       <PreviewDisclosure />
+      </div>
     </PanelStack>
   );
 }

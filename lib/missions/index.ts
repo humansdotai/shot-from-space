@@ -18,7 +18,7 @@
  */
 import { nanoid } from 'nanoid';
 import type { TierId } from '@/lib/mission-flow/config';
-import { liveQuote } from '@/lib/pricing-live';
+import { archiveScenes, liveQuote } from '@/lib/pricing-live';
 import { printFileUrlFor } from '@/lib/print-file';
 import { createPrintOrder } from '@/lib/integrations/gelato';
 import { prisma } from '@/lib/db';
@@ -227,6 +227,8 @@ export interface CreateMissionInput {
   missionName?: string | null;
   /** Poster composition id chosen in the flow (lib/poster/styles.ts). */
   posterStyle?: string | null;
+  /** The historical scene chosen on the Window step (archive tier). */
+  archiveId?: string | null;
 }
 
 /**
@@ -273,12 +275,20 @@ export async function createMission(input: CreateMissionInput): Promise<MissionD
   // THE CHARGE IS THE LIVE QUOTE: real SkyFi imagery for THIS target + real
   // Gelato print for this size/finish + 10 % (lib/pricing-live.ts). /start
   // has no tier and is a commission. Never a browser-supplied number.
-  const tier: TierId = input.tier ?? 'COMMISSION';
+  const archiveId = input.archiveId?.trim() || null;
+  const tier: TierId = archiveId ? 'ARCHIVE' : (input.tier ?? 'COMMISSION');
   const quote = await liveQuote(tier, input.formatId, input.frame, currency, {
     areaKm: input.areaKm,
     lat: address.lat,
     lon: address.lon,
+    archiveId,
   });
+  const chosenScene = archiveId
+    ? (await archiveScenes(address.lat, address.lon, input.areaKm)).find((s) => s.id === archiveId) ?? null
+    : null;
+  if (archiveId && !chosenScene) {
+    throw new MissionValidationError('That historical capture is no longer on file. Pick another on the Window step.');
+  }
   const amountMinor = quote.totalMinor;
 
   const code = await reserveCode();
@@ -322,6 +332,8 @@ export async function createMission(input: CreateMissionInput): Promise<MissionD
       dedication: sanitizeDedication(input.dedication),
       missionName: cleanName(input.missionName),
       posterStyle: input.posterStyle?.trim().slice(0, 40) || null,
+      skyfiArchiveId: chosenScene?.id ?? null,
+      archiveCapturedAt: chosenScene?.capturedAt ? new Date(chosenScene.capturedAt) : null,
       // Operator-only: the cost basis of the charge. Read on /admin, never shown to the buyer.
       quoteNote:
         `${tier} · imagery ${quote.imagery.toFixed(2)} + print ${quote.print.toFixed(2)} ` +
