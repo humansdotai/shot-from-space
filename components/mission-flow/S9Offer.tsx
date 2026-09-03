@@ -245,7 +245,9 @@ export function ReviewSection({
       tag: id === RECOMMENDED_TIER ? RECOMMENDED_TAG : undefined,
       note: (
         <>
-          {copy.body}
+          {id === 'ARCHIVE' && archive
+            ? 'The existing capture you chose. Nothing is tasked, so nothing is waited for.'
+            : copy.body}
           {TIER_FORCED_FRAME[id] ? <> Framed regardless of the finish chosen earlier.</> : null}
           {/* ONE LINE OF EVIDENCE ON THE CARD ITSELF, so the difference is
               legible before a card is selected rather than only after. Both
