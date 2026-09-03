@@ -178,6 +178,8 @@ export function toMissionDTO(row: MissionRow, opts: ToMissionDTOOptions = {}): M
   const dto: MissionDTO = {
     code: row.code,
     shortLink: missionShortLink(row.code),
+    missionName: row.missionName ?? null,
+    posterStyle: row.posterStyle ?? null,
     state,
     stage,
     locationLabel: row.locationLabel,

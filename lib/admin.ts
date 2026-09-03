@@ -11,7 +11,8 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 import { missionShortLink } from '@/lib/codes';
-import type { Currency, FormatId, FrameOption, MissionState } from '@/lib/types';
+import { composedPrintFileUrl } from '@/lib/print-file';
+import { stageIndex, type Currency, type FormatId, type FrameOption, type MissionStage, type MissionState } from '@/lib/types';
 
 export const ADMIN_COOKIE = 'sfs_admin';
 export const ADMIN_COOKIE_TTL_S = 30 * 24 * 60 * 60;
@@ -61,8 +62,16 @@ export async function isAdminRequest(): Promise<boolean> {
 /* ------------------------------------------------------------------ */
 export type AdminStatus = 'UNPAID' | 'CANCELLED' | 'AWAITING_APPROVAL' | MissionState;
 
+export interface AdminEvent {
+  label: string;
+  detail: string | null;
+  at: string;
+}
+
 export interface AdminMission {
   code: string;
+  missionName: string | null;
+  posterStyle: string | null;
   createdAt: string;
   email: string;
   locationLabel: string;
@@ -84,8 +93,20 @@ export interface AdminMission {
   trackingUrl: string | null;
   isDemo: boolean;
   ownerLink: string;
-  proofUrl: string;
-  lastEvent: { label: string; detail: string | null; at: string } | null;
+  /** Watermarked preview of the composition (null before IMAGE ACQUIRED). */
+  previewUrl: string | null;
+  /** The print file as Gelato receives it — the composed print (admin cookie opens it). */
+  printUrl: string;
+  /** The signed URL Gelato is actually sent for the composed print. */
+  composedPrintFileUrl: string;
+  /** Operator-supplied replacement print file, if any. */
+  printFileUrl: string | null;
+  /** True when a delivered capture is on file (live SkyFi asset). */
+  hasCapture: boolean;
+  /** Download of the actual delivered capture (admin). */
+  captureUrl: string;
+  lastEvent: AdminEvent | null;
+  events: AdminEvent[];
   quoteNote: string | null;
 }
 
@@ -108,8 +129,15 @@ export async function listMissionsForAdmin(limit = 300): Promise<AdminMission[]>
           : state === 'PROCESSING'
             ? 'AWAITING_APPROVAL'
             : state;
+    const acquired =
+      state !== 'CANCELLED'
+        ? stageIndex(state as MissionStage) >= stageIndex('IMAGE_ACQUIRED')
+        : Boolean(r.capturedAt);
+    const events: AdminEvent[] = r.events.map((e) => ({ label: e.label, detail: e.detail, at: e.at.toISOString() }));
     return {
       code: r.code,
+      missionName: r.missionName ?? null,
+      posterStyle: r.posterStyle ?? null,
       createdAt: r.createdAt.toISOString(),
       email: r.email,
       locationLabel: r.locationLabel,
@@ -131,8 +159,14 @@ export async function listMissionsForAdmin(limit = 300): Promise<AdminMission[]>
       trackingUrl: r.trackingUrl,
       isDemo: r.isDemo,
       ownerLink: `https://${missionShortLink(r.code, r.shareToken)}`,
-      proofUrl: `/api/poster/${r.code}?variant=print`,
+      previewUrl: acquired ? `/api/poster/${r.code}?variant=full` : null,
+      printUrl: `/api/print/${r.code}`,
+      composedPrintFileUrl: composedPrintFileUrl(r.code),
+      printFileUrl: r.printFileUrl ?? null,
+      hasCapture: Boolean(r.captureAssetUrl),
+      captureUrl: `/api/admin/missions/${r.code}/capture`,
       lastEvent: last ? { label: last.label, detail: last.detail, at: last.at.toISOString() } : null,
+      events,
       quoteNote: received?.detail?.match(/Quote: (.*?)\. Awaiting/)?.[1] ?? null,
     };
   });

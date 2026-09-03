@@ -1,6 +1,6 @@
 'use client';
 
-import { PanelHead, PanelStack, PhaseBreak, PreviewDisclosure } from './Panel';
+import { PanelHead, PanelStack } from './Panel';
 import { WhyGroup, type WhyAnswer } from './S2Why';
 import { WhoGroup } from './S3Who';
 import { NameGroup } from './S4Name';
@@ -61,25 +61,13 @@ export function MissionSection({
   return (
     <PanelStack>
       <PanelHead eyebrow="Phase 03 · Mission" title="Whose mission is this?">
-        Three short answers. Only one of them changes the order.
+        Name it, and say whether it is a gift.
       </PanelHead>
 
       <WhyGroup value={why} onSelect={onWhy} />
       <WhoGroup gift={gift} onSelect={onGift} />
 
-      <PhaseBreak
-        clip="zoom-logo"
-        label="In orbit"
-        /* NOT "the instrument that will fly your frame". Nothing has been
-           tasked and no spacecraft has been assigned, so a caption on
-           stock footage saying THIS one flies it is a claim the system
-           cannot produce. What is true is the geometry and who chooses;
-           it is the same sentence the Window section already prints. */
-        caption="Spacecraft are on station over this ground now. Which one flies your frame is chosen by the operator when the mission is tasked — what you are naming below is the tasking."
-      />
-
       <NameGroup value={missionName} onChange={onName} />
-      <PreviewDisclosure />
     </PanelStack>
   );
 }

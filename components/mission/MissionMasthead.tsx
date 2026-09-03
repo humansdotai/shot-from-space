@@ -196,6 +196,11 @@ export function MissionMasthead({
               headline. */}
           <div className="col-span-12 xl:col-span-7 xl2:col-span-8">
             <MissionRef code={mission.code} size="lg" />
+            {mission.missionName ? (
+              <p className="mt-3 font-mono text-tele uppercase tracking-wider text-paper-dim">
+                {mission.missionName}
+              </p>
+            ) : null}
 
             <FileHead
               flush

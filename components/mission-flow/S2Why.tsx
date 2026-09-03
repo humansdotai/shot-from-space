@@ -47,11 +47,6 @@ export function WhyGroup({
     <PanelGroup
       label="Why this place?"
       hint="Optional"
-      /* The disclosure is the group's own `note`, not a paragraph the
-         group happens to contain — it is small print about the control
-         above it, which is the role that slot exists for. The claim is
-         unchanged and it is still true: see the header of this file. */
-      note="This answer is not stored with your order, is not sent anywhere and is not printed on anything. It stays in this browser tab."
     >
       <CardGroup label="Why this place?" options={OPTIONS} value={value} onSelect={onSelect} />
     </PanelGroup>

@@ -7,6 +7,7 @@ import { CAPTURE_GSD_CM, PASS_ATTRIBUTION } from '@/lib/mission-flow/config';
 import { PanelGroup, PanelHead, PanelNote, PanelStack } from './Panel';
 import { fixed, untilLabel, useLiveClock, useSkyReading } from './PassGeometry';
 import { AREA_KM_MAX, AREA_KM_MIN, type MissionTarget } from '@/lib/mission-flow/state';
+import type { QuoteView } from '@/lib/pricing-model';
 
 /**
  * SECTION 2 — FRAMING (was screen 5, `How it works`).
@@ -64,6 +65,7 @@ export function FramingSection({
   areaKm,
   onAreaKm,
   priceLabel,
+  quote = null,
 }: {
   target: MissionTarget;
   /** Footprint, km per side. */
@@ -71,6 +73,8 @@ export function FramingSection({
   onAreaKm: (areaKm: number) => void;
   /** The live total for the current configuration, e.g. "Commission · €296.34". */
   priceLabel?: string;
+  /** The live breakdown behind that total — imagery, print, margin. */
+  quote?: QuoteView | null;
 }) {
   const sky = useSkyReading(target.lat, target.lon);
   const seed = useMemo(() => new Date().toISOString(), []);
@@ -105,6 +109,31 @@ export function FramingSection({
           ≈ {px.toLocaleString('en-GB')} px across at {CAPTURE_GSD_CM} cm per pixel
           {priceLabel ? ` · ${priceLabel}` : ''}
         </p>
+        {quote ? (
+          <dl className={cn('mt-3 border-t pt-3 text-note', RULE, INK_DIM)}>
+            <div className="flex justify-between gap-4">
+              <dt>Imagery</dt>
+              <dd className="tabular-nums">{money(quote.imagery, quote.currency)}</dd>
+            </div>
+            <p className="pt-1">
+              {quote.tier === 'ARCHIVE'
+                ? `${quote.imageryNote}. A smaller frame costs less.`
+                : `SkyFi bills a 25 km² minimum per tasking, so every frame up to ${AREA_KM_MAX} × ${AREA_KM_MAX} km costs the same.`}
+            </p>
+            <div className="flex justify-between gap-4 pt-2">
+              <dt>Print</dt>
+              <dd className="tabular-nums">{money(quote.print, quote.currency)}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt>Margin · 10 %</dt>
+              <dd className="tabular-nums">{money(quote.margin, quote.currency)}</dd>
+            </div>
+            <div className={cn('flex justify-between gap-4 border-t pt-2', RULE, INK)}>
+              <dt>Total</dt>
+              <dd className="tabular-nums">{money(quote.total, quote.currency)}</dd>
+            </div>
+          </dl>
+        ) : null}
       </PanelGroup>
 
       {crossing ? (
@@ -118,4 +147,8 @@ export function FramingSection({
       <PanelNote>{PASS_ATTRIBUTION}</PanelNote>
     </PanelStack>
   );
+}
+
+function money(v: number, currency: 'USD' | 'EUR'): string {
+  return `${currency === 'USD' ? '$' : '€'}${v.toFixed(2)}`;
 }

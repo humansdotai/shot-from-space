@@ -160,6 +160,17 @@ export function fallbackTierPriceMinor(
   }).totalMinor;
 }
 
+/** The breakdown /api/pricing returns for one configuration (client-safe). */
+export interface QuoteView {
+  tier: PricingTier;
+  currency: Currency;
+  imagery: number;
+  print: number;
+  margin: number;
+  total: number;
+  imageryNote: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* Live table — filled by the browser from /api/pricing                */
 /* ------------------------------------------------------------------ */

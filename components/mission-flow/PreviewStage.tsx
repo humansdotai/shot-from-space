@@ -124,9 +124,9 @@ export function PreviewStage({
                  and a head reading `Archive imagery of this ground` over
                  a spacecraft, before any ground has been named, states
                  two things that are not true at once. */
-              kicker={target ? 'Archive frame' : 'Mission preview'}
+              kicker={target ? 'Reference frame' : 'Mission preview'}
               title={
-                target ? 'Archive imagery of this ground.' : 'Nothing is measured yet.'
+                target ? 'Reference imagery of this ground.' : 'Nothing is measured yet.'
               }
               /* NOT "Undated reference". This stage does not hold the scene
                  record — <RevealStage /> fetches it — so it cannot know
@@ -136,7 +136,7 @@ export function PreviewStage({
                  a fact does not get to state it. */
               lead={
                 target
-                  ? 'Archive reference, not your capture. The mission returns a new frame of the same coordinates, taken for you.'
+                  ? 'For positioning only. Your mission returns a new frame of these coordinates.'
                   : 'Every figure on this page is measured from one set of coordinates. There are none yet.'
               }
               telemetry={
@@ -172,8 +172,8 @@ export function PreviewStage({
           {kind === 'map' ? (
             <Stage
               kicker="Capture framing"
-              title="The 2 km your mission photographs."
-              lead="Drag the map. The frame stays exactly where it is — what changes is the ground that falls inside it."
+              title={`The ${draft.areaKm} km your mission photographs.`}
+              lead="Drag to move the ground under the frame."
               /* No telemetry row: <FrameOnMap /> prints the centre, the
                  ordered footprint and the live scale under the basemap
                  itself, where they update per frame. Saying it twice
@@ -191,7 +191,7 @@ export function PreviewStage({
             <Stage
               kicker="Print preview"
               title="Exactly what will print."
-              lead="The real composition at the real proportion — the frame, the telemetry strip and the print credit, as they go to the press."
+              lead="Your frame, the telemetry strip and the print credit, at the proportion of the size you pick."
               telemetry={[
                 { label: 'Size', value: getFormat(draft.formatId).metric },
                 {

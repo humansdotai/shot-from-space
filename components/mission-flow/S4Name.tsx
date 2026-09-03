@@ -62,9 +62,8 @@ export function NameGroup({
       hint={`${draft.length} / ${MISSION_NAME_MAX}`}
       note={
         <span id="mission-name-note">
-          It goes on the mission file, the dossier and every message about the mission — not on the
-          print, which carries the mission code. The default is a sequence number: there is no name
-          on file to build one from, because nothing is asked of you before payment.
+          Shown on your mission file and in every message about it. The print carries the mission
+          code.
         </span>
       }
     >

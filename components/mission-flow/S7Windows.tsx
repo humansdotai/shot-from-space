@@ -271,7 +271,7 @@ export function WindowSection({
           source, its age and how many sets were usable, in more detail than
           a standfirst can. */}
       <PanelHead eyebrow="Capture" title="Next capture windows.">
-        Propagated over your coordinates from published orbital elements.
+        Pick the day. The operator flies the best pass on it.
       </PanelHead>
 
       {/* THE COMPUTATION IS SHOWN WHILE IT IS HAPPENING, AND THEN IT GETS
@@ -407,46 +407,13 @@ export function WindowSection({
       ) : null}
 
       {/* ❸ THE EVIDENCE UNDER IT. */}
-      {ready && overhead && overhead.satellites.length > 0 ? (
-        <PanelGroup
-          label="Over your coordinates"
-          hint={`${overhead.searchHours / 24} day search`}
-        >
-          <SatelliteList satellites={overhead.satellites} />
-          {overhead.silent.length > 0 ? (
-            <PanelNote className="pt-4">
-              {overhead.silent.join(', ')}{' '}
-              {overhead.silent.length === 1 ? 'makes' : 'make'} no pass above{' '}
-              {overhead.minElevationDeg}° over your coordinates inside the search. A
-              sun-synchronous orbit genuinely does not cross every point every week, and an
-              empty answer is left empty.
-            </PanelNote>
-          ) : null}
-        </PanelGroup>
-      ) : null}
-
-      {/* ❹ WHERE IT ALL CAME FROM. Last, smallest, and never absent. */}
       {ready ? (
-        <div className={cn('border-t pt-4', RULE)}>
-          <p
-            data-telemetry
-            className={cn('font-mono text-tele-xs uppercase tabular-nums', INK_DIM)}
-          >
-            {fleet
-              ? `${fleet.usable} / ${fleet.tracked} ELEMENT SETS USABLE · ${fleet.source.toUpperCase()}${
-                  fleet.freshestAgeHours !== null ? ` · ${fleet.freshestAgeHours} H OLD` : ''
-                }`
-              : 'ELEMENT PROVENANCE NOT READ'}
-          </p>
-          <PanelNote className="pt-3">{PASS_ATTRIBUTION}</PanelNote>
-          {!result?.indicative ? (
-            <PanelNote className="pt-2">
-              A pass counts when the satellite clears {PASS_MIN_ELEVATION_DEG}° above your
-              horizon. Cloud is not known this far ahead and is not part of these dates, and no
-              capture-likelihood figure is derived from them.
-            </PanelNote>
-          ) : null}
-        </div>
+        <PanelNote className="border-t pt-4">
+          {PASS_ATTRIBUTION}
+          {!result?.indicative
+            ? ` A pass counts above ${PASS_MIN_ELEVATION_DEG}°. Cloud is not known this far ahead.`
+            : ''}
+        </PanelNote>
       ) : null}
 
       <PreviewDisclosure />

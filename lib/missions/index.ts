@@ -19,6 +19,8 @@
 import { nanoid } from 'nanoid';
 import type { TierId } from '@/lib/mission-flow/config';
 import { liveQuote } from '@/lib/pricing-live';
+import { printFileUrlFor } from '@/lib/print-file';
+import { createPrintOrder } from '@/lib/integrations/gelato';
 import { prisma } from '@/lib/db';
 import { generateMissionCode, normalizeMissionCode } from '@/lib/codes';
 import { getExampleMission } from '@/lib/gallery';
@@ -221,6 +223,10 @@ export interface CreateMissionInput {
    * than as a blank string.
    */
   dedication?: string | null;
+  /** The buyer's mission name from the flow. */
+  missionName?: string | null;
+  /** Poster composition id chosen in the flow (lib/poster/styles.ts). */
+  posterStyle?: string | null;
 }
 
 /**
@@ -314,6 +320,8 @@ export async function createMission(input: CreateMissionInput): Promise<MissionD
       currency,
       areaKm: input.areaKm ?? 1.2,
       dedication: sanitizeDedication(input.dedication),
+      missionName: cleanName(input.missionName),
+      posterStyle: input.posterStyle?.trim().slice(0, 40) || null,
 
       // Deterministic telemetry so the file reads the same on every visit.
       sensor: telemetry.sensor,
@@ -458,6 +466,93 @@ export async function attachCheckoutSession(
  * This is the demo control behind POST /api/dev/advance, and it is also what a
  * real webhook handler calls when a provider reports progress.
  */
+function cleanName(v: string | null | undefined): string | null {
+  const t = (v ?? '').replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, 40);
+  return t.length >= 3 ? t : null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Print file — operator controls                                      */
+/* ------------------------------------------------------------------ */
+
+/** Records the operator's replacement print file (absolute URL) or clears it. */
+export async function setPrintFile(code: string, fileUrl: string | null): Promise<MissionDTO> {
+  const row = await findRowByCode(code);
+  if (!row) throw new MissionNotFoundError(code);
+  const url = fileUrl?.trim() || null;
+  if (url && !/^https?:\/\/\S+$/i.test(url)) {
+    throw new MissionValidationError('The print file must be an absolute http(s) URL Gelato can fetch.');
+  }
+  await prisma.mission.update({
+    where: { id: row.id },
+    data: {
+      printFileUrl: url,
+      events: {
+        create: {
+          stage: 'NOTE',
+          label: url ? 'PRINT FILE REPLACED' : 'PRINT FILE RESET',
+          detail: url
+            ? `Operator supplied a new print version: ${url}`
+            : 'Operator reset the print file to the composed version.',
+        },
+      },
+    },
+  });
+  const updated = await findRowByCode(code);
+  return toMissionDTO(updated ?? row, { includePrivate: true });
+}
+
+/**
+ * Sends the current print file to Gelato as a NEW order — a re-print after a
+ * replaced file, or a first print outside the state machine. Records the new
+ * order id and keeps the previous one in the timeline.
+ */
+export async function reprintMission(code: string): Promise<MissionDTO> {
+  const row = await findRowByCode(code);
+  if (!row) throw new MissionNotFoundError(code);
+  if (!row.paidAt) throw new MissionValidationError('This mission is not paid; nothing can be printed.');
+  if (row.state === 'CANCELLED') throw new MissionValidationError('This mission is cancelled.');
+  const region = regionForCountry(row.countryCode);
+  const fileUrl = printFileUrlFor(row);
+  const order = await createPrintOrder({
+    missionCode: row.code,
+    formatId: row.formatId as FormatId,
+    frame: row.frame as FrameOption,
+    region,
+    address: {
+      line1: row.addressLine1,
+      line2: row.addressLine2 ?? undefined,
+      city: row.city,
+      region: row.adminArea ?? undefined,
+      postalCode: row.postalCode,
+      countryCode: row.countryCode,
+      country: row.country,
+      lat: row.lat,
+      lon: row.lon,
+    },
+    fileUrl,
+    email: row.email,
+  });
+  await prisma.mission.update({
+    where: { id: row.id },
+    data: {
+      gelatoOrderId: order.orderId,
+      printFacility: order.facility ?? row.printFacility,
+      events: {
+        create: {
+          stage: 'NOTE',
+          label: 'SENT TO GELATO',
+          detail:
+            `Print order ${order.orderId} placed${row.gelatoOrderId ? ` (previous order ${row.gelatoOrderId})` : ''}. ` +
+            `File: ${fileUrl}`,
+        },
+      },
+    },
+  });
+  const updated = await findRowByCode(code);
+  return toMissionDTO(updated ?? row, { includePrivate: true });
+}
+
 export interface AdvanceMissionOptions {
   /**
    * THE PRINT APPROVAL GATE. Nothing automatic — not the SkyFi webhook, not

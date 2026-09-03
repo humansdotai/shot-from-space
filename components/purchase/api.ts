@@ -106,6 +106,9 @@ export interface CreateOrderInput {
    * blank string would be sanitised to the same null one layer further in.
    */
   dedication?: string;
+  /** The buyer's mission name (shown on the mission file) and poster composition. */
+  missionName?: string;
+  posterStyle?: string;
 }
 
 export interface CreateOrderResult {

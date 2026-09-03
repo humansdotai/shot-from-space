@@ -26,6 +26,7 @@ import { CLOUD_THRESHOLD_PCT, materialLine } from '@/lib/guarantees';
 import { formatCoords, formatTelemetryDate, formatTelemetryTimestamp } from '@/lib/utils';
 import { requestTasking, fetchCapture } from '@/lib/integrations/skyfi';
 import { refundPayment } from '@/lib/integrations/stripe';
+import { printFileUrlFor } from '@/lib/print-file';
 import { createPrintOrder, getOrderStatus, mockShipment } from '@/lib/integrations/gelato';
 import { sendEmail, type MissionEmailData } from '@/lib/integrations/email';
 import { pickFrameSlugForCoords } from './frames';
@@ -283,6 +284,10 @@ async function enterStage(row: MissionRow, stage: MissionStage, at: Date): Promi
           capturedAt,
           imagerySlug: slug,
           previewUrl: `/api/poster/${code}`,
+          // The delivered asset itself (live: SkyFi's signed download URL).
+          // This is what the print composes from and what an operator
+          // downloads from /admin; the catalogue slug is only the stand-in.
+          captureAssetUrl: capture?.assetUrl && /^https?:\/\//.test(capture.assetUrl) ? capture.assetUrl : null,
           cloudPct,
         },
         detail:
@@ -332,10 +337,10 @@ async function enterStage(row: MissionRow, stage: MissionStage, at: Date): Promi
           lat: row.lat,
           lon: row.lon,
         },
-        // The production asset. Agent 9's poster route serves the composed
-        // file; a live Gelato order needs a publicly fetchable 300 DPI print
-        // file here, not the watermarked preview.
-        fileUrl: `/api/poster/${code}?variant=print`,
+        // The production asset: the operator's replacement file when one was
+        // supplied on /admin, else the composed, unwatermarked print behind
+        // its signed URL (lib/print-file.ts). Absolute, so Gelato can fetch it.
+        fileUrl: printFileUrlFor(row),
         email: row.email,
       });
 

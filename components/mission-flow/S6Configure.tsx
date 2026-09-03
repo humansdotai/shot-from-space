@@ -89,8 +89,7 @@ export function DesignSection({
   return (
     <div className="space-y-8">
       <PanelHead eyebrow="Capture" title="Configure the print.">
-        The preview is the composition that prints: your frame, the telemetry strip and the
-        print credit, at the proportion of the size you pick.
+        Composition, size and finish. The preview is what prints.
       </PanelHead>
 
       {draft.target ? (
@@ -163,12 +162,6 @@ export function DesignSection({
         </span>
       </div>
 
-      <PanelNote>
-        Priced as a commission — a spacecraft tasked to fly your coordinates for a frame that
-        does not exist yet. Review also offers the archive frame that already exists over them,
-        and the large format; both re-price this same size, and Review shows what each one
-        actually gets you.
-      </PanelNote>
 
       <PreviewDisclosure />
     </div>

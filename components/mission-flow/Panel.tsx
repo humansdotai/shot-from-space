@@ -827,11 +827,6 @@ export function PhaseBreak({
  * belongs to.
  */
 export function PreviewDisclosure() {
-  return (
-    <PanelNote>
-      The print beside these controls is a preview composition. The picture in it is the archive
-      stand-in from the reveal; the frame that prints is the one your mission captures. Values
-      marked after capture are filled from the pass that takes it.
-    </PanelNote>
-  );
+  /* Retired: the preview stage itself marks stand-in footage. */
+  return null;
 }

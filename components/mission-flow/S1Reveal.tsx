@@ -252,9 +252,11 @@ export function TargetSection({
   frame: FrameOption;
   currency: Currency;
 }) {
-  const range = <PriceRange formatId={formatId} frame={frame} currency={currency} />;
-  if (!target) return <NameThePlace onTarget={onTarget} range={range} />;
-  return <TargetRecord target={target} range={range} />;
+  void formatId;
+  void frame;
+  void currency;
+  if (!target) return <NameThePlace onTarget={onTarget} range={null} />;
+  return <TargetRecord target={target} />;
 }
 
 /**
@@ -281,39 +283,7 @@ export function TargetSection({
  * earlier`, which is only true while the finish is chosen first) and puts
  * a seven-day propagation on the first paint of the funnel.
  */
-function PriceRange({
-  formatId,
-  frame,
-  currency,
-}: {
-  formatId: FormatId;
-  frame: FrameOption;
-  currency: Currency;
-}) {
-  const quotes = TIER_IDS.map((id) =>
-    tierPriceMinor(id, formatId, effectiveFrame(id, frame), currency),
-  );
-  const low = Math.min(...quotes);
-  const high = Math.max(...quotes);
-  const size = getFormat(formatId).metric;
-
-  return (
-    <PanelNote>
-      The total in the panel is the {TIER_COPY[DEFAULT_TIER].name.toLowerCase()} — one of{' '}
-      {TIER_IDS.length}. At {size} the same coordinates can be bought from{' '}
-      <span data-telemetry className="font-mono tabular-nums">
-        {formatPrice(low, currency)}
-      </span>{' '}
-      to{' '}
-      <span data-telemetry className="font-mono tabular-nums">
-        {formatPrice(high, currency)}
-      </span>
-      ; you choose in Review and the total follows.
-    </PanelNote>
-  );
-}
-
-function TargetRecord({ target, range }: { target: MissionTarget; range: ReactNode }) {
+function TargetRecord({ target }: { target: MissionTarget }) {
   const { scene, failed } = useScene(target.lat, target.lon);
   const landmark = landmarkFor(target.lat, target.lon);
 
@@ -325,7 +295,7 @@ function TargetRecord({ target, range }: { target: MissionTarget; range: ReactNo
 
   return (
     <PanelStack>
-      <PanelHead eyebrow="Target · 01" title="A spacecraft will cross this." rule={false}>
+      <PanelHead eyebrow="Target · 01" title="Your target." rule={false}>
         {target.label}
       </PanelHead>
 
@@ -348,29 +318,11 @@ function TargetRecord({ target, range }: { target: MissionTarget; range: ReactNo
           the PICTURE are grouped together, under their own label, after
           the two about the MISSION. */}
       <NextCrossing lat={target.lat} lon={target.lon} sky={sky} />
-      <PassGlossary sky={sky} />
 
-      <PanelGroup
-        label="About the picture beside you"
-        note={
-          <>
-            {REVEAL_SOURCE_NOTICE}
-            {scene
-              ? ` The scene here is ${scene.city}, ${scene.countryCode}, about ${scene.distanceKm} km from your coordinates.`
-              : failed
-                ? ' The scene record could not be read, so nothing is claimed about its date or origin.'
-                : ''}
-          </>
-        }
-      >
-        <p className={cn('max-w-[var(--measure)] text-body', INK)}>
-          {scene?.acquired
-            ? `It is archive imagery from ${scene.acquired}. Your mission captures a new frame of this ground. Yours alone.`
-            : 'It is archive imagery, undated. Your mission captures a new frame of this ground. Yours alone.'}
-        </p>
-      </PanelGroup>
-
-      {range}
+      <PanelNote>
+        {REVEAL_SOURCE_NOTICE}
+        {scene?.acquired ? ` Reference scene dated ${scene.acquired}.` : ''}
+      </PanelNote>
     </PanelStack>
   );
 }
@@ -421,7 +373,6 @@ function NextCrossing({
   const seed = useMemo(() => new Date().toISOString(), []);
   const now = useLiveClock(seed);
   const crossing = reading?.next ?? null;
-  const { look, subPoint } = useLiveLook(crossing, lat, lon, now);
 
   return (
     <PanelGroup
@@ -446,10 +397,6 @@ function NextCrossing({
               1440 x 820 the chart and this caption together are what a
               reader sees before scrolling, and a four-line legend cut in
               half by the fold explains nothing. */}
-          <p className={cn('mx-auto max-w-[var(--measure-tight)] pb-5 text-center text-note', INK_DIM)}>
-            North at the top; the outer ring is your horizon, the centre is straight overhead. The
-            dashed ring is {PASS_MIN_ELEVATION_DEG}° — below it nobody images.
-          </p>
 
           {crossing ? (
             <>
@@ -463,66 +410,12 @@ function NextCrossing({
                 <FieldRow
                   label="Rises in"
                   value={untilLabel(crossing.risesAt, now)}
-                  note={`${utcStamp(crossing.risesAt)} — when it clears your horizon.`}
+                  note={utcStamp(crossing.risesAt)}
                 />
-                <FieldRow
-                  label="Highest point"
-                  value={`${fixed(crossing.peakElevation, 0)}°`}
-                  note="Above your horizon. Ten degrees is the floor."
-                />
-                <FieldRow
-                  label="Above the horizon"
-                  value={fixed(crossing.durationMin, 0)}
-                  unit="min"
-                  note="Horizon to horizon. The shutter is open for seconds of it."
-                />
-                {look ? (
-                  <FieldRow
-                    label="Distance now"
-                    value={groupDigits(look.rangeKm)}
-                    unit="km"
-                    note={
-                      look.elevation >= 0
-                        ? 'In your sky as you read this.'
-                        : 'Below your horizon as you read this.'
-                    }
-                  />
-                ) : null}
+                <FieldRow label="Highest point" value={`${fixed(crossing.peakElevation, 0)}°`} />
+                <FieldRow label="Above the horizon" value={fixed(crossing.durationMin, 0)} unit="min" />
               </FieldTable>
 
-              {/* THE SPACECRAFT, WHERE IT IS. <OrbitFigure /> draws the ring
-                  to scale against the globe from the real altitude, tilts it
-                  by the real inclination, turns the globe to the real
-                  sub-point and puts the marker at the real orbital phase.
-                  Every one of those five values is propagated from the same
-                  element set the crossing above was found in, and they are
-                  recomputed every second — which is why it moves. */}
-              <div className="flex items-center gap-5 pt-6">
-                <OrbitFigure
-                  inclination={crossing.inclination}
-                  phase={phaseOf(crossing, now)}
-                  periodMinutes={crossing.periodMin}
-                  altitudeKm={subPoint?.altitudeKm ?? null}
-                  subLatitude={subPoint?.latitude ?? null}
-                  subLongitude={subPoint?.longitude ?? null}
-                  size={116}
-                  live={look !== null && look.elevation >= PASS_MIN_ELEVATION_DEG}
-                  className={cn('shrink-0', INK_DIM)}
-                />
-                <FieldTable dense className="min-w-0 flex-1">
-                  <FieldRow label="Inclination" value={`${fixed(crossing.inclination, 1)}°`} />
-                  <FieldRow label="One orbit" value={fixed(crossing.periodMin, 1)} unit="min" />
-                  {subPoint ? (
-                    <FieldRow label="Altitude" value={groupDigits(subPoint.altitudeKm)} unit="km" />
-                  ) : null}
-                  {subPoint ? (
-                    <FieldRow
-                      label="Over"
-                      value={`${fixed(Math.abs(subPoint.latitude), 1)}° ${subPoint.latitude >= 0 ? 'N' : 'S'}  ${fixed(Math.abs(subPoint.longitude), 1)}° ${subPoint.longitude >= 0 ? 'E' : 'W'}`}
-                    />
-                  ) : null}
-                </FieldTable>
-              </div>
             </>
           ) : (
             <p className={cn('max-w-[var(--measure)] text-body', INK)}>
@@ -533,16 +426,6 @@ function NextCrossing({
             </p>
           )}
 
-          <PanelNote className="pt-5">
-            This crossing was propagated in this browser with SGP4, from element sets published by
-            CelesTrak for the {reading.usable} spacecraft this site tracks
-            {reading.source === 'snapshot'
-              ? ' — from a set bundled with this build, because the live request did not complete —'
-              : ','}{' '}
-            the freshest fitted {ageLabel(reading.freshestAgeHours).toLowerCase()} ago. It is a
-            model run forward, not telemetry: nobody is downlinking to this page.{' '}
-            {PASS_ATTRIBUTION}
-          </PanelNote>
         </>
       )}
     </PanelGroup>
@@ -563,49 +446,6 @@ function NextCrossing({
  * here — even accurately — is how the fourteen contradictions that file
  * exists to prevent got written in the first place.
  */
-function PassGlossary({ sky }: { sky?: SkyResult }) {
-  const reading = sky?.reading ?? null;
-  const crossing = reading?.next ?? null;
-  const ready = sky?.status === 'ready' && reading !== null;
-
-  const terms = [
-    {
-      term: 'Pass',
-      body: crossing
-        ? `One crossing. This one is above your horizon for ${fixed(crossing.durationMin, 0)} minutes, and the sensor can only work while it is high enough — the shutter is open for seconds of it.`
-        : `One crossing: the spacecraft comes up over one horizon, goes over you and is gone. It can only image while it is above ${PASS_MIN_ELEVATION_DEG}°, and it is only up there for minutes.`,
-    },
-    {
-      term: 'Capture window',
-      body: ready
-        ? `Every pass on one calendar day. You order a day, not a minute: the tracked fleet crosses these coordinates ${reading.crossings24h === 1 ? 'once' : `${reading.crossings24h} times`} in the next 24 hours, the best of them reaching ${fixed(reading.best24hElevation, 0)}° over you, and which crossing is used is decided on the day.`
-        : 'Every pass on one calendar day. You order a day, not a minute; which crossing is used is decided on the day.',
-    },
-    {
-      term: 'Cloud',
-      body: guaranteeTerm('retask').detail,
-    },
-  ];
-
-  return (
-    <PanelGroup label="What you are buying" hint={`Cloud limit ${CLOUD_THRESHOLD_PCT}%`}>
-      {/* NOT <FieldTable />, and the exception is deliberate. That
-          primitive is a two-COLUMN instrument, and a definition three
-          sentences long in a 160px value column at 320px is unreadable.
-          This is the same vocabulary — a monospace label, a hairline per
-          entry, no gaps — stacked instead of paired, which is what prose
-          of this length needs. */}
-      <dl>
-        {terms.map((t) => (
-          <div key={t.term} className={cn('border-b py-3.5', RULE)}>
-            <dt className={cn('font-mono text-tele uppercase', INK_DIM)}>{t.term}</dt>
-            <dd className={cn('max-w-[var(--measure)] pt-2 text-body', INK)}>{t.body}</dd>
-          </div>
-        ))}
-      </dl>
-    </PanelGroup>
-  );
-}
 
 /**
  * `/mission` with no `address`, `lat` or `lon`.
@@ -715,7 +555,6 @@ function NameThePlace({
           numbers in them, because there are no coordinates yet to measure
           over; the moment a place is named the same block re-renders with
           this address's own figures in it. */}
-      <PassGlossary />
       {range}
     </PanelStack>
   );

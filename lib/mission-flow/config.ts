@@ -298,7 +298,7 @@ export const INDICATIVE_NOTICE =
  * by the operator at tasking time and is not one of these by default.
  */
 export const PASS_ATTRIBUTION =
-  'Windows are propagated from published elements for the fleet this site tracks. The spacecraft assigned to a mission is chosen by the operator at tasking and is not named here.';
+  'Passes are propagated from published orbital elements; the operator assigns the spacecraft at tasking.';
 
 /* ==================================================================
  * 4. THE REVEAL — screen 1
@@ -335,7 +335,7 @@ export const ARCHIVE_MATCH_RADIUS_KM = 60;
 
 /** Said on screen 1 in every case. It is the plain truth about the frame. */
 export const REVEAL_SOURCE_NOTICE =
-  'Mock mode: no keyed tile provider is configured. The frame shown is a public-domain archive scene, cropped for preview and not geo-registered to your address.';
+  'Reference imagery for positioning. Your mission captures a new frame of this ground.';
 
 /* ==================================================================
  * 5. FAMOUS COORDINATES — one line, when the target is somewhere known
@@ -384,6 +384,25 @@ export const MISSION_NAME_MAX = 40;
  * signed-in user's name into it and the prefill becomes
  * `MISSION [LASTNAME]-001` with no other change.
  */
+/**
+ * A mission name from the place the reader named — "MISSION AVENUE ANATOLE
+ * FRANCE" for "5 Avenue Anatole France, Paris". The first segment of the
+ * label, letters only, capped to the name budget; the coordinates when the
+ * label has no words in it. Each mission gets its own name, not a sequence.
+ */
+export function missionNameForPlace(label: string, lat?: number, lon?: number): string {
+  const segments = label.split(/[,;\n]/).map((x) =>
+    x.replace(/[^\p{L}\s'-]/gu, ' ').replace(/\s+/g, ' ').trim().toUpperCase(),
+  );
+  const word = segments.find((x) => x.length >= 3) ?? '';
+  const budget = MISSION_NAME_MAX - MISSION_NAME_PREFIX.length - 1;
+  if (word) return `${MISSION_NAME_PREFIX} ${word.slice(0, budget).trim()}`;
+  if (typeof lat === 'number' && typeof lon === 'number') {
+    return `${MISSION_NAME_PREFIX} ${Math.abs(lat).toFixed(2)}${lat >= 0 ? 'N' : 'S'} ${Math.abs(lon).toFixed(2)}${lon >= 0 ? 'E' : 'W'}`;
+  }
+  return defaultMissionName();
+}
+
 export function defaultMissionName(lastName?: string | null): string {
   const clean = (lastName ?? '')
     .trim()

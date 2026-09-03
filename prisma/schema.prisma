@@ -91,6 +91,16 @@ model Mission {
   /// Side length of the capture footprint in km, chosen at /start.
   areaKm      Float  @default(1.2)
 
+  // --- Naming / composition -------------------------------------
+  /// The buyer's mission name from the flow (e.g. "MISSION AVENUE ANATOLE FRANCE").
+  missionName  String?
+  /// Poster composition chosen in the flow (lib/poster/styles.ts id).
+  posterStyle  String?
+  /// Signed download URL of the delivered SkyFi asset (live) — the actual capture.
+  captureAssetUrl String?
+  /// Operator-supplied replacement print file (absolute URL). Overrides the composed print.
+  printFileUrl    String?
+
   // --- Dedication -----------------------------------------------
   /// "What is this place?", in the customer's own words. Printed on the
   /// mission sheet. Free text, so it is written and read only through

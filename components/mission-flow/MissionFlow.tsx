@@ -24,12 +24,13 @@ import { track } from '@/lib/mission-flow/track';
 import {
   currencyForTarget,
   effectiveFrame,
+  missionNameForPlace,
   TIER_COPY,
   tierPriceMinor,
 } from '@/lib/mission-flow/config';
 import { resolveAddress, toTargetAddress } from '@/lib/mission-flow/api';
 import type { Currency } from '@/lib/types';
-import { setLivePriceTable, type PriceTable } from '@/lib/pricing-model';
+import { setLivePriceTable, type PriceTable, type QuoteView } from '@/lib/pricing-model';
 import { Configurator } from './Configurator';
 import { ClosedRail, SectionRail } from './SectionRail';
 import { PanelFoot, type PrimaryAction } from './PanelFoot';
@@ -138,6 +139,7 @@ export function MissionFlow() {
      the target or the currency changes. The state exists only to re-render
      once the table lands; the table itself lives in lib/pricing-model. */
   const [priceRev, setPriceRev] = useState(0);
+  const [liveQuoteView, setLiveQuoteView] = useState<QuoteView | null>(null);
 
   useEffect(() => {
     if (geoSeeded.current) return;
@@ -155,11 +157,20 @@ export function MissionFlow() {
   const liveLat = draft.target?.lat;
   const liveLon = draft.target?.lon;
   const liveArea = draft.areaKm;
+  const liveTier = draft.tier;
+  const liveFormat = draft.formatId;
+  const liveFrame = effectiveFrame(draft.tier, draft.frame);
   const liveCurrency: Currency =
     currencyOverride ?? currencyForTarget(draft.target?.address?.countryCode);
   useEffect(() => {
     let cancelled = false;
-    const q = new URLSearchParams({ currency: liveCurrency, area: String(liveArea) });
+    const q = new URLSearchParams({
+      currency: liveCurrency,
+      area: String(liveArea),
+      tier: liveTier,
+      formatId: liveFormat,
+      frame: liveFrame,
+    });
     if (typeof liveLat === 'number' && typeof liveLon === 'number') {
       q.set('lat', liveLat.toFixed(4));
       q.set('lon', liveLon.toFixed(4));
@@ -168,9 +179,10 @@ export function MissionFlow() {
     const t = window.setTimeout(() => {
       fetch(`/api/pricing?${q.toString()}`)
         .then((r) => r.json())
-        .then((d: { currency?: Currency; table?: PriceTable }) => {
+        .then((d: { currency?: Currency; table?: PriceTable; quote?: QuoteView }) => {
           if (cancelled || !d.table || (d.currency !== 'USD' && d.currency !== 'EUR')) return;
           setLivePriceTable(d.currency, d.table);
+          setLiveQuoteView(d.quote ?? null);
           setPriceRev((n) => n + 1);
         })
         .catch(() => {});
@@ -179,7 +191,25 @@ export function MissionFlow() {
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [liveLat, liveLon, liveArea, liveCurrency]);
+  }, [liveLat, liveLon, liveArea, liveCurrency, liveTier, liveFormat, liveFrame]);
+
+  /* THE MISSION NAME FOLLOWS THE PLACE until the reader types their own.
+     "MISSION 001" for everyone was the defect: the default is now built
+     from the target ("MISSION AVENUE ANATOLE FRANCE"), and replaced again
+     if the target changes — unless the name was edited by hand. */
+  const autoName = useRef<string>(DEFAULT_DRAFT.missionName);
+  const targetLabel = draft.target?.label;
+  useEffect(() => {
+    const t = draft.target;
+    if (!t) return;
+    const next = missionNameForPlace(t.label, t.lat, t.lon);
+    setDraft((d) => {
+      const untouched = d.missionName === autoName.current || d.missionName === DEFAULT_DRAFT.missionName;
+      autoName.current = next;
+      return untouched && d.missionName !== next ? { ...d, missionName: next } : d;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetLabel]);
   void priceRev;
 
   /* --- Arrival ---------------------------------------------------- */
@@ -410,6 +440,8 @@ export function MissionFlow() {
     tier: draft.tier,
     currency,
     areaKm: draft.areaKm,
+    missionName: draft.missionName,
+    posterStyle: draft.posterStyle,
     gift: draft.gift,
     giftNote: draft.giftNote,
     receiptEmail: draft.receiptEmail,
@@ -627,6 +659,7 @@ export function MissionFlow() {
             areaKm={draft.areaKm}
             onAreaKm={(areaKm) => patch({ areaKm })}
             priceLabel={`${TIER_COPY[draft.tier].name} · ${formatPrice(totalMinor, currency)}`}
+            quote={liveQuoteView}
           />
         ) : null;
 

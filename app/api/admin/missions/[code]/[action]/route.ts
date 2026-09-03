@@ -2,17 +2,22 @@
  * POST /api/admin/missions/[code]/approve   → approve the final version, place the Gelato print
  * POST /api/admin/missions/[code]/advance   → walk one stage (never into PRINT — that is `approve`)
  * POST /api/admin/missions/[code]/refund    → refund on Stripe and cancel the mission
+ * POST /api/admin/missions/[code]/print     { fileUrl | null } → set / clear the replacement print file
+ * POST /api/admin/missions/[code]/reprint   → send the current print file to Gelato as a new order
  *
  * All three require the admin cookie (lib/admin.ts).
  */
 import { isAdminRequest } from '@/lib/admin';
 import { normalizeMissionCode } from '@/lib/codes';
-import { advanceMission, cancelMission, getMissionRowByCode } from '@/lib/missions';
-import { fail, handleError, ok } from '@/lib/missions/http';
+import { z } from 'zod';
+import { advanceMission, cancelMission, getMissionRowByCode, reprintMission, setPrintFile } from '@/lib/missions';
+import { fail, handleError, ok, readJson } from '@/lib/missions/http';
+
+const PrintBody = z.object({ fileUrl: z.string().trim().max(2000).nullable() });
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(_req: Request, ctx: { params: Promise<{ code: string; action: string }> }) {
+export async function POST(req: Request, ctx: { params: Promise<{ code: string; action: string }> }) {
   if (!(await isAdminRequest())) return fail(401, 'NOT_ADMIN', 'Admin access required.');
 
   const { code, action } = await ctx.params;
@@ -34,6 +39,16 @@ export async function POST(_req: Request, ctx: { params: Promise<{ code: string;
       }
       case 'advance': {
         const mission = await advanceMission(normalized);
+        return ok({ mission });
+      }
+      case 'print': {
+        const parsed = await readJson(req, PrintBody);
+        if (parsed.response) return parsed.response;
+        const mission = await setPrintFile(normalized, parsed.data.fileUrl);
+        return ok({ mission });
+      }
+      case 'reprint': {
+        const mission = await reprintMission(normalized);
         return ok({ mission });
       }
       case 'refund': {

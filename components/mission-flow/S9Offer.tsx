@@ -451,10 +451,6 @@ export function ReviewSection({
         />
       </div>
 
-      <PanelNote>
-        The postal record for your coordinates is resolved when the order opens; you then
-        complete payment on Stripe&apos;s secure hosted page.
-      </PanelNote>
 
       {phase === 'paying' ? (
         <p role="status" aria-live="polite" className={cn('text-label uppercase', INK_DIM)}>
@@ -590,37 +586,8 @@ function TaskingEvidence({
           value={`${totalPasses} passes · ${overhead.satellites.length} spacecraft`}
           mono
         />
-        <SpecRow
-          label="Elements"
-          value={`${overhead.elements.source.toUpperCase()}${
-            overhead.elements.freshestAgeHours !== null
-              ? ` · ${overhead.elements.freshestAgeHours} H OLD`
-              : ''
-          }`}
-          mono
-        />
       </dl>
 
-      <div className="pt-4">
-        <SatelliteList satellites={overhead.satellites} limit={4} />
-      </div>
-      {overhead.satellites.length > 4 ? (
-        <PanelNote className="pt-3">
-          {overhead.satellites.length - 4} further tracked spacecraft also cross this sky inside
-          the search. All of them are listed on the Window tab.
-        </PanelNote>
-      ) : null}
-
-      <PanelNote className="pt-4">{PASS_ATTRIBUTION}</PanelNote>
-
-      {/* THE HONEST SHAPE OF THE GAP. Saying why a likelihood is absent is
-          worth more than a number nobody could stand behind, and it hands
-          the reader the promise that covers the risk instead. */}
-      <PanelNote className="pt-2">
-        No capture-likelihood figure is shown. Geometry is computable a week ahead and cloud is
-        not, and this site has no forecast bound to a future pass — so instead of a percentage,
-        the cloud promise at the foot of this panel is what covers it.
-      </PanelNote>
     </PanelGroup>
   );
 }
@@ -688,7 +655,6 @@ function ArchiveEvidence({
           ? ' The capture window you chose is not used by this tier — it belongs to a commission, where a spacecraft is actually sent.'
           : ''}
       </PanelNote>
-      <PanelNote className="pt-2">{REVEAL_SOURCE_NOTICE}</PanelNote>
     </PanelGroup>
   );
 }
@@ -765,6 +731,8 @@ export function useCommission({
   tier,
   currency,
   areaKm,
+  missionName,
+  posterStyle,
   gift,
   giftNote,
   receiptEmail,
@@ -777,6 +745,9 @@ export function useCommission({
   currency: Currency;
   /** Footprint, km per side — the framing step's view slider. */
   areaKm: number;
+  /** The buyer's mission name and poster composition, recorded on the order. */
+  missionName: string;
+  posterStyle: string;
   gift: boolean | null;
   giftNote: string;
   receiptEmail: string;
@@ -837,6 +808,8 @@ export function useCommission({
       currency,
       email: receiptEmail.trim(),
       areaKm,
+      missionName: missionName.trim() || undefined,
+      posterStyle,
       dedication: gift && giftNote.trim() ? giftNote.trim() : undefined,
     });
 
@@ -856,7 +829,7 @@ export function useCommission({
     setOpened({ missionCode: order.data.missionCode, missionLink, checkoutUrl: order.data.checkoutUrl });
     setPhase('opened');
     window.setTimeout(() => window.location.assign(order.data.checkoutUrl), 3500);
-  }, [phase, target, receiptEmail, tier, frame, formatId, currency, areaKm, gift, giftNote]);
+  }, [phase, target, receiptEmail, tier, frame, formatId, currency, areaKm, missionName, posterStyle, gift, giftNote]);
 
   return { phase, opened, error, emailError, pay, clearEmailError };
 }

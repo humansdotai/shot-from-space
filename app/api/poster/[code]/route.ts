@@ -292,7 +292,8 @@ export async function GET(
         orbit: mission.orbit,
         formatId,
         ratio,
-        styleId,
+        // The composition the buyer chose at order time unless a style is asked for.
+        styleId: styleId ?? readStyle(mission.posterStyle),
         width,
         // The dedication is printed ON the object, so the plate is exactly
         // where it belongs — it is the answer to "what is this place?" and

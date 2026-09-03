@@ -158,6 +158,10 @@ export interface MissionDTO {
   code: string;
   /** Short link, e.g. "shot.space/M32BF" */
   shortLink: string;
+  /** The buyer's mission name, e.g. "MISSION AVENUE ANATOLE FRANCE". Null for legacy rows. */
+  missionName: string | null;
+  /** Poster composition id chosen at order time (lib/poster/styles.ts), or null. */
+  posterStyle: string | null;
   state: MissionState;
   stage: MissionStage;
   /** City-level location only — never the full street address on public views. */
