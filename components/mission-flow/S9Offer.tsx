@@ -15,6 +15,7 @@ import {
   SpecRow,
 } from '@/components/purchase/fields';
 import { formatPrice, getFormat } from '@/lib/pricing';
+import { missionShortLink } from '@/lib/codes';
 import { guaranteeTerm } from '@/lib/guarantees';
 import type { Currency, FormatId, FrameOption } from '@/lib/types';
 import {
@@ -61,7 +62,14 @@ import {
  */
 const AMBER = '#f0a02a';
 
-export type CommissionPhase = 'idle' | 'paying' | 'failed';
+export type CommissionPhase = 'idle' | 'paying' | 'opened' | 'failed';
+
+/** Set once the order exists: the buyer's keyed link, shown before the redirect. */
+export interface OpenedOrder {
+  missionCode: string;
+  missionLink: string;
+  checkoutUrl: string;
+}
 
 /**
  * ==================================================================
@@ -153,6 +161,7 @@ export function ReviewSection({
   currency,
   onCurrencyChange,
   phase,
+  opened = null,
   error,
   emailError,
 }: {
@@ -181,6 +190,8 @@ export function ReviewSection({
   /** Switch the billing currency (USD/EUR). */
   onCurrencyChange?: (c: Currency) => void;
   phase: CommissionPhase;
+  /** The opened order (code + keyed link), while the checkout redirect is pending. */
+  opened?: OpenedOrder | null;
   error: string | null;
   emailError: string | null;
 }) {
@@ -449,6 +460,32 @@ export function ReviewSection({
         <p role="status" aria-live="polite" className={cn('text-label uppercase', INK_DIM)}>
           Opening secure checkout…
         </p>
+      ) : null}
+
+      {phase === 'opened' && opened ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="border px-4 py-3"
+          style={{ borderColor: 'var(--color-signal)' }}
+        >
+          <p className="text-label uppercase" style={{ color: 'var(--color-signal)' }}>
+            Mission {opened.missionCode} opened
+          </p>
+          <p className="mt-1 text-sm">
+            Your mission link:{' '}
+            <a href={opened.missionLink} className="underline break-all">
+              {opened.missionLink.replace(/^https?:\/\//, '')}
+            </a>
+          </p>
+          <p className={cn('mt-1 text-xs', INK_DIM)}>
+            Keep it — it reopens payment any time and shows the mission&apos;s progress. Taking
+            you to secure checkout…{' '}
+            <a href={opened.checkoutUrl} className="underline">
+              continue now
+            </a>
+          </p>
+        </div>
       ) : null}
     </div>
   );
@@ -743,6 +780,7 @@ export function useCommission({
   onPaid: (missionCode: string) => void;
 }) {
   const [phase, setPhase] = useState<CommissionPhase>('idle');
+  const [opened, setOpened] = useState<OpenedOrder | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
 
@@ -805,12 +843,17 @@ export function useCommission({
       return;
     }
 
-    // Payment is completed on Stripe's hosted checkout. Its success_url returns
-    // the buyer to /m/{code}?paid=1, so there is no in-page settle and no card
-    // detail is ever collected here. In mock mode the URL is the local checkout
-    // page, which settles the same way.
-    window.location.assign(order.data.checkoutUrl);
+    // The mission now exists and has its keyed link — shown for a beat so the
+    // buyer can keep it — then payment completes on Stripe's hosted checkout.
+    // Its success_url returns the buyer to /m/{code}?paid=1&k=…, its cancel
+    // URL to the same file with "Complete payment"; no card detail is ever
+    // collected here. In mock mode the URL is the local checkout page.
+    const missionLink =
+      order.data.missionLink ?? `https://${missionShortLink(order.data.missionCode)}`;
+    setOpened({ missionCode: order.data.missionCode, missionLink, checkoutUrl: order.data.checkoutUrl });
+    setPhase('opened');
+    window.setTimeout(() => window.location.assign(order.data.checkoutUrl), 3500);
   }, [phase, target, receiptEmail, tier, frame, formatId, currency, gift, giftNote]);
 
-  return { phase, error, emailError, pay, clearEmailError };
+  return { phase, opened, error, emailError, pay, clearEmailError };
 }

@@ -17,7 +17,8 @@
  *   toMissionDTO(row, opts?)           → MissionDTO
  */
 import { nanoid } from 'nanoid';
-import { tierPriceMinor, type TierId } from '@/lib/mission-flow/config';
+import type { TierId } from '@/lib/mission-flow/config';
+import { liveQuote } from '@/lib/pricing-live';
 import { prisma } from '@/lib/db';
 import { generateMissionCode, normalizeMissionCode } from '@/lib/codes';
 import { getExampleMission } from '@/lib/gallery';
@@ -25,7 +26,6 @@ import {
   currencyForRegion,
   formatPrice,
   getFormat,
-  priceMinor,
   regionForCountry,
 } from '@/lib/pricing';
 import { formatCoords } from '@/lib/utils';
@@ -264,9 +264,16 @@ export async function createMission(input: CreateMissionInput): Promise<MissionD
       ? input.currency
       : currencyForRegion(region);
   const format = getFormat(input.formatId);
-  const amountMinor = input.tier
-    ? tierPriceMinor(input.tier, input.formatId, input.frame, currency)
-    : priceMinor(input.formatId, input.frame, currency);
+  // THE CHARGE IS THE LIVE QUOTE: real SkyFi imagery for THIS target + real
+  // Gelato print for this size/finish + 10 % (lib/pricing-live.ts). /start
+  // has no tier and is a commission. Never a browser-supplied number.
+  const tier: TierId = input.tier ?? 'COMMISSION';
+  const quote = await liveQuote(tier, input.formatId, input.frame, currency, {
+    areaKm: input.areaKm,
+    lat: address.lat,
+    lon: address.lon,
+  });
+  const amountMinor = quote.totalMinor;
 
   const code = await reserveCode();
   const telemetry = missionTelemetry(code);
@@ -327,8 +334,10 @@ export async function createMission(input: CreateMissionInput): Promise<MissionD
             label: 'ORDER RECEIVED',
             detail:
               `Target accepted: ${locationLabelFor(address)}. ` +
-              `${format.metric} ${input.frame === 'FRAMED' ? 'framed' : 'unframed'}. ` +
-              `Awaiting payment authorisation.`,
+              `${tier} · ${format.metric} ${input.frame === 'FRAMED' ? 'framed' : 'unframed'}. ` +
+              `Quote: imagery ${quote.imagery.toFixed(2)} + print ${quote.print.toFixed(2)} ` +
+              `+ margin ${quote.margin.toFixed(2)} = ${quote.total.toFixed(2)} ${currency} ` +
+              `(${quote.imageryNote}). Awaiting payment authorisation.`,
           },
         ],
       },
@@ -449,9 +458,21 @@ export async function attachCheckoutSession(
  * This is the demo control behind POST /api/dev/advance, and it is also what a
  * real webhook handler calls when a provider reports progress.
  */
+export interface AdvanceMissionOptions {
+  /**
+   * THE PRINT APPROVAL GATE. Nothing automatic — not the SkyFi webhook, not
+   * the sweep, not a dev control — may carry a mission into PRINT, because
+   * that transition places the real Gelato order. The pipeline stops at
+   * PROCESSING (the composed final version) and waits for a person on
+   * /admin to approve it; only that route passes `approvePrint: true`.
+   */
+  approvePrint?: boolean;
+}
+
 export async function advanceMission(
   code: string,
   to?: MissionStage | MissionState,
+  opts: AdvanceMissionOptions = {},
 ): Promise<MissionDTO> {
   const row = await findRowByCode(code);
   if (!row) throw new MissionNotFoundError(code);
@@ -467,10 +488,36 @@ export async function advanceMission(
     );
   }
 
-  const path = transitionPath(from, target);
+  let path = transitionPath(from, target);
+  let held = false;
+  if (!opts.approvePrint) {
+    const gate = path.indexOf('PRINT');
+    if (gate >= 0) {
+      path = path.slice(0, gate);
+      held = true;
+    }
+  }
+
   let current: MissionRow = row;
   for (const step of path) {
     current = await applyTransition(current, step);
+  }
+
+  if (held && asState(current.state) === 'PROCESSING') {
+    const events = current.events ?? [];
+    const last = events[events.length - 1];
+    if (!last || last.label !== 'AWAITING PRINT APPROVAL') {
+      await prisma.missionEvent.create({
+        data: {
+          missionId: current.id,
+          stage: 'NOTE',
+          label: 'AWAITING PRINT APPROVAL',
+          detail:
+            'Final composition ready. The print order is placed only after a mission operator approves the final version.',
+        },
+      });
+      current = (await findRowByCode(current.code)) ?? current;
+    }
   }
 
   return toMissionDTO(current, { includePrivate: true });

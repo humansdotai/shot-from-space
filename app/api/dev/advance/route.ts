@@ -76,7 +76,7 @@ export async function POST(req: Request) {
         ? // No window enforcement: the demo control exists to walk a mission
           // into every state, cancellation from mid-flight included.
           await cancelMission(code)
-        : await advanceMission(code, to as Parameters<typeof advanceMission>[1]);
+        : await advanceMission(code, to as Parameters<typeof advanceMission>[1], { approvePrint: true });
     return ok(receipt(mission));
   } catch (err) {
     return handleError('dev/advance', err);

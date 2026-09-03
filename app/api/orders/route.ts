@@ -15,7 +15,9 @@ import {
   DEDICATION_MAX_LENGTH,
   attachCheckoutSession,
   createMission,
+  getShareToken,
 } from '@/lib/missions';
+import { missionShortLink } from '@/lib/codes';
 import { createCheckoutSession } from '@/lib/integrations/stripe';
 import { getFormat, currencyForRegion, regionForCountry } from '@/lib/pricing';
 import { fail, handleError, ok, readJson } from '@/lib/missions/http';
@@ -92,6 +94,7 @@ export async function POST(req: Request) {
     });
 
     const format = getFormat(formatId);
+    const shareToken = await getShareToken(mission.code);
 
     const session = await createCheckoutSession({
       missionCode: mission.code,
@@ -99,11 +102,23 @@ export async function POST(req: Request) {
       currency,
       email,
       description: `MISSION / ${mission.code} — ${format.metric} / ${frame}`,
+      returnKey: shareToken,
     });
 
     await attachCheckoutSession(mission.code, session.id);
 
-    return ok({ missionCode: mission.code, checkoutUrl: session.url }, { status: 201 });
+    // The keyed short link is the buyer's handle on this mission from now on:
+    // retry the payment, follow progress, no sign-in needed.
+    return ok(
+      {
+        missionCode: mission.code,
+        checkoutUrl: session.url,
+        amountMinor: mission.private?.amountMinor ?? 0,
+        currency,
+        missionLink: `https://${missionShortLink(mission.code, shareToken)}`,
+      },
+      { status: 201 },
+    );
   } catch (err) {
     return handleError('orders', err);
   }

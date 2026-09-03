@@ -1,4 +1,8 @@
 import type { Currency, FormatId, FrameOption, PrintFormat, Region } from './types';
+import { fallbackTierPriceMinor } from './pricing-model';
+
+/* Retail = real SkyFi tasking + real Gelato print + 10 % (lib/pricing-model.ts). */
+const m = (f: FormatId, fr: FrameOption, c: Currency) => fallbackTierPriceMinor('COMMISSION', f, fr, c);
 
 /**
  * Catalogue. Three sizes, framed or unframed, one price that already
@@ -13,8 +17,8 @@ export const FORMATS: PrintFormat[] = [
     designation: 'FMT-30',
     ratio: '3:4',
     price: {
-      USD: { UNFRAMED: 18000, FRAMED: 26000 },
-      EUR: { UNFRAMED: 17000, FRAMED: 24000 },
+      USD: { UNFRAMED: m('F30', 'UNFRAMED', 'USD'), FRAMED: m('F30', 'FRAMED', 'USD') },
+      EUR: { UNFRAMED: m('F30', 'UNFRAMED', 'EUR'), FRAMED: m('F30', 'FRAMED', 'EUR') },
     },
     note: 'Desk scale. Reads as a document.',
   },
@@ -25,8 +29,8 @@ export const FORMATS: PrintFormat[] = [
     designation: 'FMT-50',
     ratio: '5:7',
     price: {
-      USD: { UNFRAMED: 28000, FRAMED: 42000 },
-      EUR: { UNFRAMED: 26000, FRAMED: 39000 },
+      USD: { UNFRAMED: m('F50', 'UNFRAMED', 'USD'), FRAMED: m('F50', 'FRAMED', 'USD') },
+      EUR: { UNFRAMED: m('F50', 'UNFRAMED', 'EUR'), FRAMED: m('F50', 'FRAMED', 'EUR') },
     },
     note: 'Standard issue. Street grid stays legible.',
   },
@@ -37,8 +41,8 @@ export const FORMATS: PrintFormat[] = [
     designation: 'FMT-70',
     ratio: '7:10',
     price: {
-      USD: { UNFRAMED: 42000, FRAMED: 64000 },
-      EUR: { UNFRAMED: 39000, FRAMED: 59000 },
+      USD: { UNFRAMED: m('F70', 'UNFRAMED', 'USD'), FRAMED: m('F70', 'FRAMED', 'USD') },
+      EUR: { UNFRAMED: m('F70', 'UNFRAMED', 'EUR'), FRAMED: m('F70', 'FRAMED', 'EUR') },
     },
     note: 'Wall scale. Individual rooftops resolve.',
   },

@@ -30,9 +30,15 @@ export function generateMissionCode(): string {
   );
 }
 
-/** `shot.space/M32BF` — the canonical short link shown beside a mission code. */
-export function missionShortLink(code: string): string {
-  return `shot.space/M${code.toUpperCase()}`;
+/**
+ * `shot.space/M32BF` — the canonical short link shown beside a mission code.
+ * With `key` (the mission's share token) it becomes `shot.space/M32BF?k=…`:
+ * the code alone is four characters and guessable, so the KEY is what opens
+ * the owner view — retry payment, follow progress — without signing in.
+ */
+export function missionShortLink(code: string, key?: string | null): string {
+  const base = `shot.space/M${code.toUpperCase()}`;
+  return key ? `${base}?k=${encodeURIComponent(key)}` : base;
 }
 
 /** Local route for a mission control page. */

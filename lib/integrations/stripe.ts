@@ -47,6 +47,11 @@ export interface CreateCheckoutSessionInput {
   email: string;
   /** Line-item description, e.g. "MISSION / 32BF — 50 × 70 CM / FRAMED". */
   description: string;
+  /**
+   * The mission's share token. Carried on the return URLs so the buyer lands
+   * on their own mission file — paid or backed-out — without a session.
+   */
+  returnKey?: string | null;
 }
 
 export interface CheckoutSession {
@@ -217,8 +222,11 @@ export const live: StripeAdapter = {
     const form = new URLSearchParams();
     form.set('mode', 'payment');
     form.set('customer_email', input.email);
-    form.set('success_url', `${SITE_URL}/m/${input.missionCode}?paid=1`);
-    form.set('cancel_url', `${SITE_URL}/start?cancelled=${input.missionCode}`);
+    const key = input.returnKey ? `&k=${encodeURIComponent(input.returnKey)}` : '';
+    form.set('success_url', `${SITE_URL}/m/${input.missionCode}?paid=1${key}`);
+    // Backing out of Stripe returns to the mission file, which offers
+    // "Complete payment" for as long as the mission is unpaid.
+    form.set('cancel_url', `${SITE_URL}/m/${input.missionCode}?cancelled=1${key}`);
     form.set('client_reference_id', input.missionCode);
     form.set('metadata[missionCode]', input.missionCode);
 

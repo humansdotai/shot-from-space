@@ -5,7 +5,8 @@ import { MissionFile } from '@/components/mission';
 import { FleetTracker } from '@/components/satellites';
 import { fetchFleetElements } from '@/lib/integrations/celestrak';
 import { getSessionUser } from '@/lib/auth';
-import { normalizeMissionCode } from '@/lib/codes';
+import { missionShortLink, normalizeMissionCode } from '@/lib/codes';
+import { PaymentNotice } from '@/components/mission/PaymentNotice';
 import { PUBLIC_MOCK_MODE, SITE_URL } from '@/lib/env';
 import { getMissionByCode, getShareToken } from '@/lib/missions';
 import type { MissionDTO } from '@/lib/types';
@@ -49,7 +50,10 @@ import type { MissionDTO } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-type Params = { params: Promise<{ code: string }> };
+type Params = {
+  params: Promise<{ code: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { code: raw } = await params;
@@ -61,32 +65,47 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-export default async function MissionControlPage({ params }: Params) {
+export default async function MissionControlPage({ params, searchParams }: Params) {
   const { code: raw } = await params;
   const code = normalizeMissionCode(raw);
   if (!code) notFound();
 
+  // THE KEY. `shot.space/M{code}?k=…` carries the mission's share token; a
+  // four-character code is guessable, the 24-character key is not. A
+  // matching key opens the owner view exactly like a signed-in owner does —
+  // it is how a buyer retries payment or follows progress without an
+  // account. Compared server-side against the stored token; never echoed.
+  const sp = (await searchParams) ?? {};
+  const keyParam = typeof sp.k === 'string' ? sp.k : Array.isArray(sp.k) ? sp.k[0] : null;
+  const storedKey = keyParam ? await getShareToken(code) : null;
+  const keyOwner = Boolean(keyParam && storedKey && keyParam === storedKey);
+
   const user = await getSessionUser().catch(() => null);
-  const record = await getMissionByCode(code, { includePrivate: Boolean(user) });
+  const record = await getMissionByCode(code, { includePrivate: Boolean(user) || keyOwner });
   if (!record) notFound();
 
   // A session alone does not open the file: private fields are released only
-  // when the session belongs to the address the mission was filed to.
-  const isOwner = Boolean(
-    user && record.private && record.private.email.toLowerCase() === user.email.toLowerCase(),
-  );
+  // when the session belongs to the address the mission was filed to — or
+  // when the request carried the mission's own key.
+  const isOwner =
+    keyOwner ||
+    Boolean(
+      user && record.private && record.private.email.toLowerCase() === user.email.toLowerCase(),
+    );
   // `record` was built with `includePrivate` for ANY signed-in session, so a
   // signed-in visitor who is not the owner has to be brought back down to the
   // public shape here. That means every owner-gated field, not just the
   // `private` block: the carrier tracking number is a bearer token for the
   // delivery address (see `toMissionDTO`) and must come off with it.
+  // The share key never travels in the DTO — it is read for the owner only,
+  // and only to build the copyable links.
+  const shareToken = isOwner ? (storedKey ?? (await getShareToken(code))) : null;
+
   const mission: MissionDTO = isOwner
-    ? record
+    ? { ...record, shortLink: missionShortLink(record.code, shareToken) }
     : { ...record, private: undefined, trackingNumber: null, trackingUrl: null };
 
-  // The share key never travels in the DTO — it is read for the owner only,
-  // and only to build the copyable read-only link.
-  const shareToken = isOwner ? await getShareToken(mission.code) : null;
+  const unpaid = Boolean(isOwner && mission.private && !mission.private.paidAt && mission.state !== 'CANCELLED');
 
   // The sky over this target. One CelesTrak request, cached three hours and
   // shared across every mission file; the positions move once a second in the
@@ -95,6 +114,16 @@ export default async function MissionControlPage({ params }: Params) {
   const serverNow = new Date().toISOString();
 
   return (
+    <>
+      {unpaid && mission.private ? (
+        <PaymentNotice
+          code={mission.code}
+          amountMinor={mission.private.amountMinor}
+          currency={mission.private.currency}
+          shareToken={shareToken}
+          shortLink={mission.shortLink}
+        />
+      ) : null}
     <MissionFile
       mission={mission}
       variant="owner"
@@ -115,5 +144,6 @@ export default async function MissionControlPage({ params }: Params) {
       }
       comms={<MissionComms missionCode={mission.code} stage={mission.stage} />}
     />
+    </>
   );
 }

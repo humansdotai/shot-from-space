@@ -111,6 +111,10 @@ export interface CreateOrderInput {
 export interface CreateOrderResult {
   missionCode: string;
   checkoutUrl: string;
+  /** `https://shot.space/M{code}?k=…` — retry payment / follow progress. */
+  missionLink?: string;
+  amountMinor?: number;
+  currency?: 'USD' | 'EUR';
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<Result<CreateOrderResult>> {
@@ -134,6 +138,9 @@ export async function createOrder(input: CreateOrderInput): Promise<Result<Creat
         // The contract always returns a checkoutUrl; this keeps the flow moving
         // if a future provider omits it.
         checkoutUrl: body.checkoutUrl ?? `/checkout/mock/${body.missionCode}`,
+        missionLink: body.missionLink,
+        amountMinor: body.amountMinor,
+        currency: body.currency,
       },
     };
   } catch {

@@ -20,7 +20,8 @@
  */
 
 import type { Currency, FormatId, FrameOption } from '@/lib/types';
-import { currencyForRegion, priceMinor, regionForCountry } from '@/lib/pricing';
+import { fallbackTierPriceMinor, tierPriceMinorLiveOrFallback } from '@/lib/pricing-model';
+import { currencyForRegion, regionForCountry } from '@/lib/pricing';
 
 /* ==================================================================
  * 1. MONEY
@@ -58,13 +59,22 @@ export type TierId = (typeof TIER_IDS)[number];
  * it is a price list, and it is yours to set.
  */
 export const TIER_PRICE: Record<TierId, Record<Currency, number>> = {
-  /** Most recent existing capture. Nothing is tasked; it ships immediately. */
-  ARCHIVE: { EUR: 79, USD: 85 },
-  /** New tasking. The core product. */
-  COMMISSION: { EUR: 189, USD: 199 },
-  /** New tasking, framed. The telemetry plate is a DIGITAL distinction on
-   *  the file, not a second object in the box — see the tier body below. */
-  COMMISSION_LARGE_FORMAT: { EUR: 349, USD: 369 },
+  /* DERIVED, not typed: real SkyFi imagery + real Gelato print at the
+     reference size, plus the 10 % margin (lib/pricing-model.ts). These are
+     the offline/landing figures; the flow itself prices LIVE from
+     /api/pricing and the order route charges the live quote. */
+  ARCHIVE: {
+    EUR: fallbackTierPriceMinor('ARCHIVE', 'F30', 'UNFRAMED', 'EUR') / 100,
+    USD: fallbackTierPriceMinor('ARCHIVE', 'F30', 'UNFRAMED', 'USD') / 100,
+  },
+  COMMISSION: {
+    EUR: fallbackTierPriceMinor('COMMISSION', 'F30', 'UNFRAMED', 'EUR') / 100,
+    USD: fallbackTierPriceMinor('COMMISSION', 'F30', 'UNFRAMED', 'USD') / 100,
+  },
+  COMMISSION_LARGE_FORMAT: {
+    EUR: fallbackTierPriceMinor('COMMISSION_LARGE_FORMAT', 'F30', 'FRAMED', 'EUR') / 100,
+    USD: fallbackTierPriceMinor('COMMISSION_LARGE_FORMAT', 'F30', 'FRAMED', 'USD') / 100,
+  },
 };
 
 /**
@@ -72,7 +82,7 @@ export const TIER_PRICE: Record<TierId, Record<Currency, number>> = {
  * cheapest reachable configuration or the flow is quoting a price nobody
  * can buy — `assertConfig()` at the foot of this file checks that.
  */
-export const PRICE_FROM = 79;
+export const PRICE_FROM = Math.floor(TIER_PRICE.ARCHIVE.EUR);
 
 /**
  * The currency quoted before a country is known, and the currency the
@@ -201,11 +211,9 @@ export function tierPriceMinor(
   frame: FrameOption,
   currency: Currency,
 ): number {
-  const base = TIER_PRICE[tier][currency] * 100;
-  const supplement =
-    priceMinor(formatId, frame, currency) -
-    priceMinor(SIZE_REFERENCE.formatId, SIZE_REFERENCE.frame, currency);
-  return base + supplement;
+  /* cost + 10 %: the live table when the browser has fetched one for this
+     currency (see MissionFlow → /api/pricing), else the measured fallback. */
+  return tierPriceMinorLiveOrFallback(tier, formatId, frame, currency);
 }
 
 /** The finish actually used for a tier — the forced one, or the chosen one. */
@@ -411,7 +419,7 @@ export function assertConfig(): void {
       tierPriceMinor(t, SIZE_REFERENCE.formatId, effectiveFrame(t, SIZE_REFERENCE.frame), 'EUR'),
     ),
   );
-  if (cheapest !== PRICE_FROM * 100) {
+  if (PRICE_FROM * 100 > cheapest || cheapest - PRICE_FROM * 100 >= 100) {
     throw new Error(
       `mission-flow config: PRICE_FROM is ${PRICE_FROM} but the cheapest configuration is ${cheapest / 100}.`,
     );

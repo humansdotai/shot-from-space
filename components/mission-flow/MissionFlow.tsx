@@ -29,6 +29,8 @@ import {
 } from '@/lib/mission-flow/config';
 import { resolveAddress, toTargetAddress } from '@/lib/mission-flow/api';
 import type { Currency } from '@/lib/types';
+import { setLivePriceTable, type PriceTable } from '@/lib/pricing-model';
+import { CAPTURE_AREA_KM } from './capture';
 import { Configurator } from './Configurator';
 import { ClosedRail, SectionRail } from './SectionRail';
 import { PanelFoot, type PrimaryAction } from './PanelFoot';
@@ -131,6 +133,12 @@ export function MissionFlow() {
      the geolocated / address default. Seeded once from the edge IP country. */
   const [currencyOverride, setCurrencyOverride] = useState<Currency | null>(null);
   const geoSeeded = useRef(false);
+  /* LIVE PRICES. Every figure the flow prints comes from `tierPriceMinor`,
+     which reads the table installed here — real SkyFi imagery for THIS
+     target + real Gelato print + 10 %, fetched from /api/pricing whenever
+     the target or the currency changes. The state exists only to re-render
+     once the table lands; the table itself lives in lib/pricing-model. */
+  const [priceRev, setPriceRev] = useState(0);
 
   useEffect(() => {
     if (geoSeeded.current) return;
@@ -144,6 +152,31 @@ export function MissionFlow() {
       })
       .catch(() => {});
   }, []);
+
+  const liveLat = draft.target?.lat;
+  const liveLon = draft.target?.lon;
+  const liveCurrency: Currency =
+    currencyOverride ?? currencyForTarget(draft.target?.address?.countryCode);
+  useEffect(() => {
+    let cancelled = false;
+    const q = new URLSearchParams({ currency: liveCurrency, area: String(CAPTURE_AREA_KM) });
+    if (typeof liveLat === 'number' && typeof liveLon === 'number') {
+      q.set('lat', liveLat.toFixed(4));
+      q.set('lon', liveLon.toFixed(4));
+    }
+    fetch(`/api/pricing?${q.toString()}`)
+      .then((r) => r.json())
+      .then((d: { currency?: Currency; table?: PriceTable }) => {
+        if (cancelled || !d.table || (d.currency !== 'USD' && d.currency !== 'EUR')) return;
+        setLivePriceTable(d.currency, d.table);
+        setPriceRev((n) => n + 1);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [liveLat, liveLon, liveCurrency]);
+  void priceRev;
 
   /* --- Arrival ---------------------------------------------------- */
   useEffect(() => {
@@ -655,6 +688,7 @@ export function MissionFlow() {
               commission.clearEmailError();
             }}
             phase={commission.phase}
+            opened={commission.opened}
             error={commission.error}
             emailError={commission.emailError}
           />
