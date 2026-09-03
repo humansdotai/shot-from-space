@@ -130,7 +130,7 @@ export function AdminBoard({ missions }: { missions: AdminMission[] }) {
 
       {msg ? <p className={`flash ${msg.tone}`}>{msg.text}</p> : null}
 
-      <div className="layout">
+      <div className={`layout${current ? ' with-detail' : ''}`}>
         <div className="tablewrap">
           <table>
             <thead>

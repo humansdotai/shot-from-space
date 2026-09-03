@@ -34,7 +34,7 @@ const CSS = `
 .adm .search{background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:8px 10px;font:inherit;min-width:260px;flex:1}
 .adm .flash{padding:8px 12px;border:1px solid var(--line);margin:0 0 12px}.adm .flash.ok{border-color:#39b36a}.adm .flash.err{border-color:var(--hot)}
 .adm .layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
-@media(min-width:1200px){.adm .layout{grid-template-columns:minmax(0,1fr) 420px}}
+@media(min-width:1200px){.adm .layout.with-detail{grid-template-columns:minmax(0,1fr) 440px}}
 .adm .tablewrap{overflow-x:auto;border:1px solid var(--line);background:var(--panel)}
 .adm table{border-collapse:collapse;width:100%}
 .adm th{text-align:left;font-weight:500;color:var(--dim);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
