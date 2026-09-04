@@ -150,10 +150,9 @@ export function sheetCopy(data: ResolvedPoster): SheetCopy {
 
   // The tasking authority is the constellation the frame was bought from —
   // an organisation on the record, not a name we made up.
-  const operator = (data.orbit.sensor || 'TASKING PARTNER')
-    .toUpperCase()
-    .split(/\s*[/·]\s*/)[0]
-    .trim();
+  /* The tasking authority is named as a role, never as a supplier: the
+     sensor label is an instrument description ("HR / OPTICAL"), not a name. */
+  const operator = 'TASKING PARTNER';
 
   const purpose = data.degraded
     ? `MISSION ${code} HAS NO FRAME ON FILE. THE ACQUISITION RECORD IS UNAVAILABLE AT THE TIME OF PRINTING. NO FURTHER STATEMENT IS MADE.`
