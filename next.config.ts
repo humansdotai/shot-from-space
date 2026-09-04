@@ -25,6 +25,13 @@ const nextConfig: NextConfig = {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [390, 640, 828, 1080, 1200, 1440, 1920, 2400],
   },
+  // The poster composer rasterises SVG text with fontconfig: the faces in
+  // public/fonts (OTF/TTF — the WOFF2 beside them are for the browser) and
+  // the catalogue frames must travel with every function that composes.
+  outputFileTracingIncludes: {
+    '/api/poster/[code]': ['./public/fonts/**', './public/imagery/**'],
+    '/api/print/[code]': ['./public/fonts/**', './public/imagery/**'],
+  },
   async redirects() {
     return [
       // The short link printed on every poster: shot.space/M32BF.

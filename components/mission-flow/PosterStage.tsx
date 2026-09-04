@@ -3,6 +3,7 @@
 import type { PosterSubject } from '@/components/poster/StyledPoster';
 import { StyledPoster } from '@/components/poster/StyledPoster';
 import type { PosterStyleId } from '@/lib/poster/styles';
+import { useMemo } from 'react';
 import { effectiveFrame } from '@/lib/mission-flow/config';
 import { revealFrameUrl } from '@/lib/mission-flow/api';
 import type { MissionDraft } from '@/lib/mission-flow/state';
@@ -41,30 +42,42 @@ import { PreviewObject } from './PreviewStage';
 /** What the sheet prints where a mission reference will go, before there is one. */
 export const NO_MISSION_CODE = '----';
 
+/** Nominal telemetry for the sample sheet; the pass that flies overwrites every value. */
+const SAMPLE_ORBIT = {
+  inclination: 'SSO 97.4°',
+  track: '//ELIPSE 33°',
+  altitudeKm: 512,
+  gsdM: 0.5,
+  sensor: 'HR / OPTICAL',
+  azimuthDeg: 104,
+  offNadirDeg: 4.2,
+  cloudPct: 6,
+};
+
+const SAMPLE_DEDICATION = 'SAMPLE RECORD. EVERY VALUE IS FILLED FROM THE PASS THAT TAKES YOUR FRAME.';
+
 export function PosterStage({ draft }: { draft: MissionDraft }) {
   const target = draft.target;
+  /* One sample instant per mount; the sheet's clock and date read from it. */
+  const sampleInstant = useMemo(() => new Date().toISOString(), []);
   if (!target) return null;
 
+  /* A SAMPLE RECORD, not a degraded plate. Before a capture exists the
+     sheet used to print dashes and "HAS NO FRAME ON FILE" — which is what
+     the buyer saw beside the price. It now shows the record as it will
+     read: this target, a sample pass instant, nominal telemetry, and the
+     buyer's own dedication when they wrote one. The values marked here are
+     replaced by the pass that takes the frame. */
   const subject: PosterSubject = {
-    // A code is issued when the order opens. Until then the sheet says so.
     missionCode: draft.missionCode ?? NO_MISSION_CODE,
-    capturedAt: null,
+    capturedAt: sampleInstant,
     lat: target.lat,
     lon: target.lon,
     locationLabel: locationLabelOf(draft),
-    orbit: {
-      inclination: '',
-      track: '',
-      altitudeKm: 0,
-      gsdM: 0,
-      sensor: '',
-      azimuthDeg: 0,
-      offNadirDeg: 0,
-      cloudPct: 0,
-    },
+    orbit: SAMPLE_ORBIT,
     coordDp: 4,
-    // No frame on file, because the frame has not been taken.
-    degraded: true,
+    degraded: false,
+    dedication: draft.gift && draft.giftNote.trim() ? draft.giftNote.trim() : SAMPLE_DEDICATION,
   };
 
   return (
