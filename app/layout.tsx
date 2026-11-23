@@ -5,6 +5,10 @@ import { SiteFooter } from '@/components/site/SiteFooter';
 import { SiteHeader } from '@/components/site/SiteHeader';
 import { ductile, inter, plexMono, typestar } from '@/lib/fonts';
 import { SITE_URL } from '@/lib/env';
+import { LiveCursor } from '@/components/oh/LiveCursor';
+import { OhNavBeacon } from '@/components/oh/OhNavBeacon';
+import { cursorVisibilityEnabled } from '@/lib/oh/cursor-ingest';
+import { cursorChannelEnabled, observerEnabled } from '@/lib/oh/edge-observer';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -51,6 +55,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://eyepup.com/t/phc_wCuGWrxAMqUM4yjzcdVCfzekMXYXCs3iFmWkSAQea4aW.js"
           strategy="afterInteractive"
         />
+        {/* 0Humans live site view: page changes and pointer position, sent to
+            this site's own /api/oh routes. Off unless OH_OBSERVER_URL and
+            OH_OBSERVER_SECRET are set. See lib/oh/edge-observer.ts. */}
+        {observerEnabled(process.env) ? <OhNavBeacon /> : null}
+        {cursorChannelEnabled(process.env) ? (
+          <LiveCursor channel visibility={cursorVisibilityEnabled(process.env)} />
+        ) : null}
         <GrainOverlay />
         <SiteHeader />
         {children}
