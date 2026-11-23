@@ -36,7 +36,14 @@ const SECTIONS = [
   {
     heading: 'What we do not collect',
     body: [
-      'No password — access is by single-use link. No advertising identifiers, no third-party trackers, no cross-site pixels, no session recording, no behavioural profiling. We do not sell or rent anything about you.',
+      'No password — access is by single-use link. No advertising identifiers, no cross-site pixels, no recording of what you type. We do not sell or rent anything about you.',
+    ],
+  },
+  {
+    heading: 'Live site view',
+    body: [
+      'Our own server receives a live record of visits, which our team can watch as it happens. For each page you open it holds the page address, the site that sent you, campaign labels, your country, US state, browser and operating system family, language, and a visitor key that changes daily. It also holds where your pointer is, how far you have scrolled, and where you tap or click, as positions on the screen. We place those positions over our own copy of the public page, so they show which link or button you were near or chose. A model uses the record to estimate what a visitor will choose next. The estimate does not change what you see.',
+      'This record does not include your IP address, anything you type, or the text of the page. The address of a page that belongs to one mission, one shared link, your account or a checkout is replaced with a placeholder before it is stored, so the record never names a mission.',
     ],
   },
   {
@@ -84,7 +91,7 @@ export default function PrivacyPage() {
       <DocHeader
         index="02"
         title="Privacy"
-        revised="2026-08-01T00:00:00Z"
+        revised="2026-11-23T00:00:00Z"
         summary="We collect an address, an email and a payment. The address is the product. Everything else is what it takes to get a printed photograph to your door."
       />
       {SECTIONS.map((s, i) => (
